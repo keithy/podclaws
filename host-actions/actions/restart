@@ -1,8 +1,0 @@
-#!/bin/sh
-# restart - restart a podman container
-set -e
-
-CONTAINER="${1?Usage: restart <container>}"
-DOCKER_CMD="${DOCKER_CMD:-docker}"
-
-$DOCKER_CMD restart "$CONTAINER"

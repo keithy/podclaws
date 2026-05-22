@@ -11,4 +11,4 @@ services:
     environment:
       # NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 is set in docker-compose.selfservice.yml
       # No manual resolver override needed
-      - NGINX_DNS_RESOLVER=10.89.1.1
+      - NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1

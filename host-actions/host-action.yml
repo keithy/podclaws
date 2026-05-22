@@ -1,9 +1,0 @@
-# Host actions overlay - uses named volume for container→host dispatch
-#
-# Usage:
-#   podman compose -f options/podman/goclaw.yml -f options/host-actions/host-action.yml up -d
-
-services:
-  goclaw:
-    volumes:
-      - ${GOCLAW_DIR:-.}/options/host-actions/bin/host-action:/usr/local/bin/host-action:ro

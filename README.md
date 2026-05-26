@@ -1,78 +1,71 @@
-# Production Setup for GoClaw
+# Podclaws
 
-For production ready deployment of goclaw, here the runtime environment is
-decoupled from the upstream goclaw codebase.
+Agent launcher for rootless Podman — runs GoClaw, PicoClaw, and other AI agents as rootless containers with sensible host communication.
 
-Using mise-en-place to manage the environment/tools and secrets we aim
-to support multiple production targets.
+## What It Does
 
-We will be focusing on rootless-podman but will anticiplate alternatives,
-selectable via `./.miserc.toml`
+Podclaws orchestrates multiple AI agents under rootless Podman. Each agent runs in an isolated Alpine container with a volume-mounted binary (no rebuild needed to update). The container communicates with the host via **sensible** — execlineb scripts that prevent shell injection and restrict AI actions to explicit allowlists.
 
-- mise/config.podman.toml
-- mise/mise.k8s.toml
-- mise/config.docker.toml
+```
+Container (alpine)          Host
+───────────────             ───
+goclaw/picoclaw       →     sensible-server → execlineb scripts
+(goclaw binary              (whitelisted host tasks)
+ volume-mounted)
+```
 
-## Features
+## Agents
 
-- Target **rootless-podman**, (podman, docker, k8s, an-other )
-- Mise-en-place to manage environment/tools and secrets
-- Decouple data storage to use alternative backend file systems (i.e. ZFS)
-- Self-improving containers capability (buildah)
+| Agent | Description |
+|-------|-------------|
+| **GoClaw** | Multi-tenant AI gateway — WebSocket RPC + HTTP API, 11+ LLM providers, 5 channels |
+| **PicoClaw** | Personal AI agent — lightweight, skill-based |
 
-## Runtime Environment Assumptions
+## Architecture
 
-- Mise-en-place is the host environment manager
-- Buildah is available.
+- **goclaw-build/** — builds versioned binaries to `RELEASES/goclaw/{amd64,arm64}/{version}/`
+- **compose.yml** — skeleton Alpine container, binary mounted in
+- **+binary.yml** — compose override for volume-mounting local binaries
+- **+dockerfile.yml** — compose override for Dockerfile-based builds
+- **sensible/** — host execution bridge (execlineb, not shell)
+- **self-buildah-orig/** — reference: self-building container approach (container evolves itself)
 
-## Podman Configuration
-
-### Quick Start
+## Quick Start
 
 ```bash
-./podman/setup-rootless.sh
+# Build binary for current arch
+cd goclaw-build && make build
+
+# Launch with volume-mounted binary
+podman compose -f goclaw-build/compose.yml -f goclaw-build/+binary.yml up -d
+
+# Or build from Dockerfile
+podman compose -f goclaw-build/compose.yml -f goclaw-build/+dockerfile.yml up -d
 ```
 
-### podman/files
+## Environment Variables
 
-| File | Purpose |
-|------|---------|
-| `podman/setup-rootless.sh` | Copies `config/containers/` to `~/.config/containers/` |
-| `podman/config/containers/` | Podman config directory |
-| `podman/config/containers/containers.conf` | userns=keep-id, group_add |
-| `podman/config/containers/storage.conf` | Overlay storage driver at `/opt/storage` |
-| `podman/config/containers/registries.conf` | Add docker.io as default search |
-| `podman/podman+network-fix.yml` | Compose overlay for network settings |
-| `podman/podman+user-fix.yml` | User namespace fixes |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GOCLAW_DEPLOY_VERSION` | `arm64/latest` | Arch/version to deploy |
+| `GOCLAW_RELEASES` | `../RELEASES/goclaw` | Path to releases dir |
+| `GOCLAW_PORT` | `18790` | Web UI port |
 
-## Podman Storage
-
-These are configured in the files above, and may be changed as needed. Batteries included defaults:
-
-- File System - Podman rootless uses overlayfs. Mount a suitable volume at /opt/storage
-- Data - For data we are using /srv as the mount point parent.
-
-#### Database permissions
-
-Normally Postgres expects the container to be started as root UID 0, and later it
-switches the postgres process to run as UID postgres(999). 
-
-Alternatively if it finds that it has been started as another UID, it will use
-that UID, and attempt to update the permissions of all files to match that UID.
-
-With `keep-id` set, the container runs rootless as the host user id.
-the attempt to change permissions may fail due to lack of
-permissions, but as long as the persisted files are owned by the
-user it will work.
+## Projects
 
 ```
-# permissions fix
-chown -R $(id -u):$(id -g) /srv/$COMPOSE_PROJECT_NAME_postgres-data
+podclaws/
+├── goclaw-build/        # Binary builder
+├── goclaw/              # GoClaw submodule (nextlevelbuilder/goclaw)
+├── sensible/            # Sensible host execution bridge
+├── self-buildah-orig/   # Self-building container reference
+├── podman/              # Rootless Podman configuration
+└── RELEASES/            # Built binaries (gitignored)
 ```
 
 ## See Also
 
-- [Podman Networking](https://docs.podman.io/en/latest/markdown/podman.1.html#network)
-- [aardvark-dns](https://github.com/containers/aardvark-dns)
-- [Nginx Resolver](https://nginx.org/en/docs/http/ngx_http_core_module.html#resolver)
-- [Self-Building Container](./SELF_BUILDING.md)
+- [GoClaw](https://github.com/nextlevelbuilder/goclaw) — the AI gateway
+- [PicoClaw](https://github.com/nextlevelbuilder/picoclaw) — personal AI agent
+- [Self-Building Container](./SELF_BUILDING.md) — alternative approach: container that builds itself
+- [Podman Setup](./docs/goclaw-podman.md) — Podman-specific configuration

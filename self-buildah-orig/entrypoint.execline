@@ -1,0 +1,4 @@
+#!/bin/execlineb -S0
+if { test "$(id -u)" = "0" }
+  { exec su-exec goclaw /app/goclaw ${@} }
+exec /app/goclaw ${@}

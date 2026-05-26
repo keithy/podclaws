@@ -1,0 +1,62 @@
+# Skeleton compose file with environment and wiring
+# detailed configuration use overlays for options
+#
+# Variables (from .env):
+#   GOCLAW_DEPLOY_VERSION   e.g. arm64/latest, amd64/v1.9.0  (default: arm64/latest)
+#   GOCLAW_PORT             Web UI port (default: 18790)
+#   GOCLAW_RELEASES         Path to releases dir (default: ./releases)
+
+services:
+  goclaw:
+    image: alpine:3.23
+    command: ["/usr/local/bin/goclaw"]
+    ports:
+      - "${GOCLAW_PORT:-18790}:18790"
+    env_file:
+      - path: ${GOCLAW_DIR:-../goclaw}/.env
+        required: false
+    environment:
+      - GOCLAW_HOST=0.0.0.0
+      - GOCLAW_PORT=18790
+      - GOCLAW_CONFIG=/app/data/config.json
+      - GOCLAW_GATEWAY_TOKEN=${GOCLAW_GATEWAY_TOKEN:?run ./prepare-env.sh or set GOCLAW_GATEWAY_TOKEN}
+      - GOCLAW_ENCRYPTION_KEY=${GOCLAW_ENCRYPTION_KEY:-}
+      - GOCLAW_SKILLS_DIR=/app/data/skills
+      - GOCLAW_TRACE_VERBOSE=${GOCLAW_TRACE_VERBOSE:-0}
+    volumes:
+      # goclaw data
+      - goclaw-data:/app/data
+      - goclaw-workspace:/app/workspace
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
+          pids: 200
+    networks:
+      - default
+      - goclaw-net
+    restart: unless-stopped
+
+volumes:
+  sensible-tasks:
+  goclaw-data:
+  goclaw-workspace:
+
+networks:
+  goclaw-net:
+    name: goclaw-net
+    driver: bridge

@@ -1,0 +1,12 @@
+# Local binary override — mount the locally-built goclaw binary into the alpine container.
+# Usage: docker compose -f goclaw-build/compose.yml -f goclaw-build/+binary.yml up -d
+#
+# Variables (set in .env):
+#   GOCLAW_RELEASES         Path to releases dir (default: ../RELEASES/goclaw)
+#   GOCLAW_DEPLOY_VERSION   Arch/version to deploy, e.g. "arm64/latest" or "amd64/v1.9.0"
+#                           The "latest" suffix follows the RELEASES/goclaw/$ARCH/latest symlink.
+
+services:
+  goclaw:
+    volumes:
+      - ${GOCLAW_RELEASES:-../RELEASES/goclaw}/${GOCLAW_DEPLOY_VERSION}/goclaw:/usr/local/bin/goclaw:ro

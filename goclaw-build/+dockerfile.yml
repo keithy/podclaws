@@ -1,0 +1,22 @@
+# Docker build override — builds goclaw from source instead of pulling an image.
+# This replaces the `image:` line with a full build when used alongside compose.yml.
+#
+# Usage:
+#   docker compose -f goclaw-build/compose.yml -f goclaw-build/+dockerfile.yml up -d
+#
+# Requires:
+#   GOCLAW_DIR          Path to goclaw source (default: ../goclaw)
+#   GOCLAW_VERSION      Version string baked into binary (default: dev)
+#   GOCLAW_BUILD_TAGS   Go build tags, e.g. embedui,otel,tsnet,redis
+
+services:
+  goclaw:
+    build:
+      context: ${GOCLAW_DIR:-./goclaw}
+      dockerfile: Dockerfile
+      args:
+        ENABLE_OTEL: "${ENABLE_OTEL:-false}"
+        ENABLE_EMBEDUI: "${ENABLE_EMBEDUI:-true}"
+        ENABLE_PYTHON: "${ENABLE_PYTHON:-true}"
+        ENABLE_FULL_SKILLS: "${ENABLE_FULL_SKILLS:-false}"
+        VERSION: "${GOCLAW_VERSION:-dev}"

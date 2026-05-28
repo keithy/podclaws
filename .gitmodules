@@ -2,9 +2,6 @@
 	path = goclaw
 	url = https://github.com/keithy/goclaw.git
 	branch = main
-[submodule "self-buildah"]
-	path = self-buildah
-	url = https://github.com/keithy/self-buildah.git
 [submodule "sensible"]
 	path = sensible
 	url = https://github.com/keithy/sensible.git

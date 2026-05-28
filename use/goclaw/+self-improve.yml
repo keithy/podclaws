@@ -2,6 +2,7 @@
 # Mounts scripts and skills into the container
 
 goclaw:
+  image: localhost/goclaw:current
   volumes:
     - ${SELF_IMPROVE_DIR:-../self-improve}/sbin:/usr/local/sbin:ro
     - ${SELF_IMPROVE_DIR:-../self-improve}/skills/self-improve:/app/workspace/skills/self-improve:ro

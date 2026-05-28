@@ -5,7 +5,7 @@ services:
   goclaw:
     image: localhost/goclaw:current
     volumes:
-      - ${PODCLAWS_RELEASES:-../RELEASES/goclaw}/${GOCLAW_DEPLOY_VERSION}/goclaw:/bin/goclaw:ro
+      - ${PODCLAWS_RELEASES:-../RELEASES/goclaw}/${GOCLAW_DEPLOY_VERSION}/goclaw:/usr/local/bin/goclaw:ro
       - ${SELF_IMPROVE_DIR:-../self-improve}/sbin:/usr/local/sbin:ro
       - ${SELF_IMPROVE_DIR:-../self-improve}/skills/self-improve:/app/workspace/skills/self-improve:ro
     environment:

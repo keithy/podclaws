@@ -43,9 +43,18 @@ case "$CMD" in
     CONTAINER="${1?Usage: podman_on_host.sh restart <container>}"
     "$SCRIPT_DIR/sensible_on_host_do.sh" 'podman restart $CONTAINER'
     ;;
+  reset_and_switch)
+    # Reset to base image and restart
+    CONTAINER="${1?Usage: podman_on_host.sh reset_and_switch <container>}"
+    "$SCRIPT_DIR/sensible_on_host_do.sh" \
+      'if { podman rmi localhost/goclaw:previous } true' \
+      'if { podman tag localhost/goclaw:current localhost/goclaw:previous } true' \
+      'if { podman tag localhost/goclaw:base localhost/goclaw:current } true' \
+      'podman restart $CONTAINER'
+    ;;
   *)
     echo "Unknown command: $CMD" >&2
-    echo "Usage: podman_on_host.sh <commit|commit_and_switch|switch|restart>" >&2
+    echo "Usage: podman_on_host.sh <commit|commit_and_switch|switch|restart|reset_and_switch>" >&2
     exit 1
     ;;
 esac

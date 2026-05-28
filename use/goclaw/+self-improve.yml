@@ -4,6 +4,15 @@
 goclaw:
   volumes:
     - ${SELF_IMPROVE_DIR:-../self-improve}/sbin:/usr/local/sbin:ro
-    - ${SELF_IMPROVE_DIR:-../self-improve}/sbin/skills:/app/workspace/skills/self-improve:ro
+    - ${SELF_IMPROVE_DIR:-../self-improve}/skills/self-improve:/app/workspace/skills/self-improve:ro
   environment:
     - HOST_TASKS_DIR=/app/data/.runtime/sensible/tasks
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  cap_add:
+    - SETUID
+    - SETGID
+    - CHOWN
+    - FOWNER

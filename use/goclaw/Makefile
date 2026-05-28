@@ -100,3 +100,19 @@ latest-link:
 clean: ## Remove all versioned releases
 	rm -rf $(RELEASES_DIR)
 	@echo "Removed $(RELEASES_DIR)/"
+
+# --------------------------------------------------------------------
+# Image management
+# --------------------------------------------------------------------
+
+image: ## Create initial goclaw image from alpine
+	podman rm goclaw-init 2>/dev/null || true
+	podman create --name goclaw-init alpine:3.23
+	podman commit goclaw-init localhost/goclaw:current
+	podman rm goclaw-init
+	@echo "Created: localhost/goclaw:current"
+
+pull-image: ## Pull alpine:3.23 and tag as :base and :current
+	podman pull alpine:3.23
+	podman tag alpine:3.23 localhost/goclaw:base
+	podman tag alpine:3.23 localhost/goclaw:current

@@ -1,8 +1,0 @@
-#!/bin/sh
-# host-action <action> <container> [args...] - write action script to queue
-QUEUE_DIR="${HOST_ACTIONS_QUEUE_DIR:-/app/data/.runtime/host-actions/queue}"
-mkdir -p "$QUEUE_DIR"
-TS="$(date +%s%3N)"
-# Sanitize args for filename: replace / and space with _
-ARGS="$(printf '%s' "$*" | tr '/ ' '__')"
-echo "$@" > "$QUEUE_DIR/${TS}-${ARGS}"

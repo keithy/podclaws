@@ -1,0 +1,26 @@
+#!/bin/sh
+# ctr-files: copy entrypoints and create directories
+set -e
+
+# When inside container, SCRIPT_DIR=/app/bin; use hardcoded /app paths
+# When on host, use real path via defs
+if [ -f /app/bin/defs ]; then
+    SCRIPT_DIR="/app/bin"
+    PARENT_DIR="/app"
+else
+    . "$(dirname "$0")/defs"
+fi
+
+echo "   → Copying entrypoint..."
+buildah copy "$CTR" "$PARENT_DIR/entrypoint.sh" /app/entrypoint.sh
+buildah copy "$CTR" "$PARENT_DIR/entrypoint.execline" /app/entrypoint.execline
+buildah run "$CTR" -- chmod +x /app/entrypoint.sh /app/entrypoint.execline
+
+echo "   → Creating app directories..."
+buildah run "$CTR" -- mkdir -p "$CTR_BIN" /app/workspace /app/data
+
+echo "   → Copying build scripts into container (for self-building)..."
+buildah copy "$CTR" "$SCRIPT_DIR" /app/bin
+# Make scripts executable inside container
+buildah run "$CTR" -- chmod +x /app/bin/*.sh /app/bin/Makefile 2>/dev/null || true
+buildah run "$CTR" -- mv /app/bin/Makefile /app/Makefile 2>/dev/null || true

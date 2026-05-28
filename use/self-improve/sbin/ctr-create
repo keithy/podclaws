@@ -1,0 +1,16 @@
+#!/bin/sh
+# ctr-create: create dev container and run full build pipeline
+set -e
+. "$(dirname "$0")/defs"
+
+echo "📦 Creating container..."
+buildah rm "$CTR" 2>/dev/null || true
+buildah from --name "$CTR" alpine:3.23
+
+. "$(dirname "$0")/ctr-base"
+. "$(dirname "$0")/ctr-buildah"
+. "$(dirname "$0")/ctr-files"
+. "$(dirname "$0")/ctr-env"
+. "$(dirname "$0")/ctr-cmd"
+
+echo "✅ Container created: $CTR"

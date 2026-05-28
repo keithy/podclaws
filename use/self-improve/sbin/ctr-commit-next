@@ -1,0 +1,8 @@
+#!/bin/sh
+# ctr-commit-next: commit dev container as :next
+set -e
+. "$(dirname "$0")/defs"
+
+echo "📤 Committing ${IMAGE_NAME}:next..."
+buildah commit "$CTR" "${IMAGE_NAME}:next"
+echo "✅ Image: ${IMAGE_NAME}:next"

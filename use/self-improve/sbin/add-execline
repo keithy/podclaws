@@ -1,0 +1,22 @@
+#!/bin/sh
+# add-execline: install execline (minimalist shell)
+set -e
+
+ensure-buildah
+
+CTR_NAME="execline-build"
+
+echo "→ Creating buildah container..."
+buildah rm "$CTR_NAME" 2>/dev/null || true
+buildah from --name "$CTR_NAME" containers-storage:localhost/self-buildah:latest
+
+echo "→ Installing execline..."
+buildah run "$CTR_NAME" -- apk add --no-cache execline
+
+echo "→ Committing as :latest..."
+buildah commit "$CTR_NAME" localhost/self-buildah:latest
+
+echo "→ Cleaning up..."
+buildah rm "$CTR_NAME"
+
+echo "✅ Execline layer done"

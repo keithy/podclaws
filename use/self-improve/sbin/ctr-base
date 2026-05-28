@@ -1,0 +1,12 @@
+#!/bin/sh
+# ctr-base: install base OS packages (busybox/ash in Alpine base, bash/execline as optional layers)
+set -e
+. "$(dirname "$0")/defs"
+
+echo "   → Updating apk cache..."
+buildah run "$CTR" -- apk update
+
+echo "   → Installing base packages..."
+buildah run "$CTR" -- apk add --no-cache \
+    ca-certificates wget su-exec \
+    coreutils grep sed gawk tar gzip

@@ -1,0 +1,9 @@
+#!/bin/sh
+# ctr-env: set environment variables
+set -e
+. "$(dirname "$0")/defs"
+
+echo "   → Setting environment variables..."
+buildah config --env "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+    --env "BUILDAH_ISOLATION=chroot" \
+    "$CTR"

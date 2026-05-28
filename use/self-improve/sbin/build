@@ -1,0 +1,7 @@
+#!/bin/sh
+# build: create dev container and commit as :latest
+set -e
+. "$(dirname "$0")/defs"
+
+. "$(dirname "$0")/ctr-create"
+. "$(dirname "$0")/ctr-commit"

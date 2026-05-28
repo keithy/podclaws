@@ -1,0 +1,22 @@
+#!/bin/sh
+# add-node: install Node.js runtime
+set -e
+
+ensure-buildah
+
+CTR_NAME="node-build"
+
+echo "→ Creating buildah container..."
+buildah rm "$CTR_NAME" 2>/dev/null || true
+buildah from --name "$CTR_NAME" containers-storage:localhost/self-buildah:latest
+
+echo "→ Installing Node.js runtime..."
+buildah run "$CTR_NAME" -- apk add --no-cache nodejs npm
+
+echo "→ Committing as :latest..."
+buildah commit "$CTR_NAME" localhost/self-buildah:latest
+
+echo "→ Cleaning up..."
+buildah rm "$CTR_NAME"
+
+echo "✅ Node.js layer done"

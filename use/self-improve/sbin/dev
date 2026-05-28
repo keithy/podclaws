@@ -1,0 +1,9 @@
+#!/bin/sh
+# dev: create dev container (binary bindmounted separately via compose)
+set -e
+. "$(dirname "$0")/defs"
+
+. "$(dirname "$0")/ctr-create"
+echo "✅ Dev container ready: $CTR"
+echo "   Binary should be at: $HOST_BIN/goclaw"
+echo "   Run with: make run  (or cd $(dirname "$SCRIPT_DIR") && podman compose up -d)"

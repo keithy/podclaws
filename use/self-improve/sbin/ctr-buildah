@@ -1,0 +1,10 @@
+#!/bin/sh
+# ctr-buildah: install buildah and fuse-overlayfs
+set -e
+. "$(dirname "$0")/defs"
+
+echo "   → Installing buildah..."
+buildah run "$CTR" -- apk add --no-cache buildah fuse-overlayfs
+
+echo "   → Creating overlay mountpoint..."
+buildah run "$CTR" -- mkdir -p /var/lib/shared /var/lib/containers /var/tmp

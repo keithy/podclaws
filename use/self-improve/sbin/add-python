@@ -1,0 +1,22 @@
+#!/bin/sh
+# add-python: install Python runtime from inside the container.
+set -e
+
+ensure-buildah
+
+CTR_NAME="python-build"
+
+echo "→ Creating buildah container..."
+buildah rm "$CTR_NAME" 2>/dev/null || true
+buildah from --name "$CTR_NAME" containers-storage:localhost/self-buildah:latest
+
+echo "→ Installing Python runtime..."
+buildah run "$CTR_NAME" -- apk add --no-cache python3 py3-pip
+
+echo "→ Committing as :latest..."
+buildah commit "$CTR_NAME" localhost/self-buildah:latest
+
+echo "→ Cleaning up..."
+buildah rm "$CTR_NAME"
+
+echo "✅ Python layer done"

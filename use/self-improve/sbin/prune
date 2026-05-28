@@ -1,0 +1,8 @@
+#!/bin/sh
+# prune: clean buildah cache
+set -e
+. "$(dirname "$0")/defs"
+
+echo "🧹 Pruning buildah cache..."
+buildah prune -a -f
+echo "✅ Done"

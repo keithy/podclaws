@@ -1,0 +1,18 @@
+#!/bin/sh
+# Install buildah if not present in running container.
+set -e
+
+if command -v buildah >/dev/null 2>&1; then
+  echo "→ Buildah already installed"
+  exit 0
+fi
+
+echo "→ Installing buildah, fuse-overlayfs, netavark..."
+export HOME=/tmp
+export TMPDIR=/tmp
+export BUILDAH_ISOLATION=chroot
+mkdir -p ~/.local/share/containers
+
+apk add --no-cache buildah fuse-overlayfs netavark
+
+echo "✅ Buildah installed"

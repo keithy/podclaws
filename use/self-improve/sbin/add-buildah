@@ -1,0 +1,19 @@
+#!/bin/sh
+# Create :build image from inside the container.
+set -e
+
+ensure-buildah
+
+CTR_NAME="buildah-build"
+
+echo "→ Creating buildah container from :latest..."
+buildah rm "$CTR_NAME" 2>/dev/null || true
+buildah from --name "$CTR_NAME" containers-storage:localhost/self-buildah:latest
+
+echo "→ Committing as :build..."
+buildah commit "$CTR_NAME" localhost/self-buildah:build
+
+echo "→ Cleaning up..."
+buildah rm "$CTR_NAME"
+
+echo "✅ :build image ready"

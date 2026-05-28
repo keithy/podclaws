@@ -1,0 +1,7 @@
+#!/bin/sh
+# run: start container via podman compose
+set -e
+. "$(dirname "$0")/defs"
+
+echo "🚀 Starting with podman compose..."
+cd "$SCRIPT_DIR" && podman compose up -d

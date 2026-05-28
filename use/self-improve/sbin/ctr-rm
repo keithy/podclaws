@@ -1,0 +1,8 @@
+#!/bin/sh
+# ctr-rm: remove dev container
+set -e
+. "$(dirname "$0")/defs"
+
+echo "🗑️  Removing $CTR..."
+buildah rm "$CTR" 2>/dev/null || true
+echo "✅ Removed"

@@ -1,0 +1,34 @@
+# Minimal self-building container with buildah.
+services:
+  goclaw:
+    image: localhost/goclaw:current
+    pull_policy: never
+    container_name: goclaw
+    environment:
+      - BUILDAH_ISOLATION=chroot
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      # Repurpose the s in sbin to self-improve
+      - ${SBIN_DIR:-./sbin}:/usr/local/sbin:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+      - FOWNER
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
+          pids: 200

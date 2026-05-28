@@ -1,0 +1,8 @@
+#!/bin/sh
+# ctr-cmd: set entrypoint and command
+set -e
+. "$(dirname "$0")/defs"
+
+echo "   → Setting entrypoint and command..."
+buildah config --entrypoint '["/app/entrypoint.sh"]' "$CTR"
+buildah config --cmd "[\"$CTR_BIN/goclaw\", \"serve\"]" "$CTR"

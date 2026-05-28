@@ -1,0 +1,23 @@
+# Shared variables for self-buildah scripts.
+# Source this in every script: . "$(dirname "$0")/defs"
+# Note: when sourced (not executed), dirname "$0" may be wrong,
+# so scripts that are copied into the container use hardcoded paths.
+
+# Resolve paths relative to this defs file
+_DEFS_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$_DEFS_DIR"
+PARENT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Defaults — override with env vars at runtime
+IMAGE_NAME="${IMAGE_NAME:-localhost/self-buildah}"
+IMAGE_TAG="${IMAGE_TAG:-latest}"
+IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
+
+CTR_NAME="${CTR_NAME:-self-buildah-dev}"
+CTR="${CTR_NAME}"
+
+# Host paths
+HOST_BIN="${HOST_BIN:-${PARENT_DIR}/bin}"
+# Container paths (hardcoded for use inside container too)
+CTR_BIN="/app/bin"
+CTR_APP="/app"

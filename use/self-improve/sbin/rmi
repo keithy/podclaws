@@ -1,0 +1,8 @@
+#!/bin/sh
+# rmi: remove images
+set -e
+. "$(dirname "$0")/defs"
+
+echo "🗑️  Removing images..."
+buildah rmi "${IMAGE_NAME}:latest" "${IMAGE_NAME}:next" 2>/dev/null || true
+echo "✅ Done"

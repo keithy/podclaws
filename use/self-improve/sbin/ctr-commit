@@ -1,0 +1,8 @@
+#!/bin/sh
+# ctr-commit: commit dev container as :latest
+set -e
+. "$(dirname "$0")/defs"
+
+echo "📤 Committing $IMAGE..."
+buildah commit "$CTR" "$IMAGE"
+echo "✅ Image: $IMAGE"

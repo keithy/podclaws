@@ -4,7 +4,7 @@
 services:
   goclaw:
     image: localhost/goclaw:current
-    entrypoint: ["/bin/goclaw"]
+    entrypoint: ["/bin/sh", "-c", "test -f /bin/goclaw && exec /bin/goclaw || { echo 'goclaw binary not found at /bin/goclaw'; exit 1; }"]
     volumes:
       - ${PODCLAWS_RELEASES:-../RELEASES/goclaw}/${GOCLAW_DEPLOY_VERSION}/goclaw:/bin/goclaw:ro
       - ${SELF_IMPROVE_DIR:-../self-improve}/sbin:/usr/local/sbin:ro

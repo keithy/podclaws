@@ -1,7 +1,7 @@
 # Skeleton compose file with goclaw service definition.
 # Use with overrides for binary mounting or dockerfile build:
-#   Binary:  docker compose -f use/goclaw/compose.yml -f use/goclaw/+binary.yml up -d
-#   Docker:  docker compose -f use/goclaw/compose.yml -f use/goclaw/+dockerfile.yml up -d
+#   Self-improve: docker compose -f use/goclaw/service.goclaw.yml -f use/goclaw/+self-improve.yml up -d
+#   Docker:  docker compose -f use/goclaw/service.goclaw.yml -f use/goclaw/+dockerfile.yml up -d
 #
 # Variables (from .env):
 #   GOCLAW_DEPLOY_VERSION   e.g. arm64/latest, amd64/v1.9.0  (default: arm64/latest)
@@ -10,7 +10,6 @@
 
 services:
   goclaw:
-    image: alpine:3.23
     command: ["/usr/local/bin/goclaw"]
     ports:
       - "${GOCLAW_PORT:-18790}:18790"

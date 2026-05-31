@@ -1,17 +1,20 @@
-# Skeleton compose file with goclaw service definition.
-# Use with overlay:
-#   docker compose -f use/goclaw/service.goclaw.yml -f use/goclaw/+self-improve.yml up -d
+# Full goclaw service using original upstream Dockerfile build
 #
-# Variables (from .env):
-#   GOCLAW_DEPLOY_VERSION   e.g. arm64/latest, amd64/v1.9.0  (default: arm64/latest)
-#   GOCLAW_PORT             Web UI port (default: 18790)
-#   GOCLAW_RELEASES         Path to releases dir (default: ../RELEASES/goclaw)
+# Usage:
+#   docker compose -f use/original/service.goclaw.yml up -d
+#
+# Builds from ${GOCLAW_DIR}/Dockerfile with full goclaw image
 
 services:
   goclaw:
-    image: localhost/goclaw:current
-
-    command: ["/bin/goclaw", "serve"]
+    build:
+      context: ${GOCLAW_DIR:-./goclaw}
+      dockerfile: Dockerfile
+      args:
+        ENABLE_OTEL: "${ENABLE_OTEL:-false}"
+        ENABLE_EMBEDUI: "${ENABLE_EMBEDUI:-true}"
+        ENABLE_PYTHON: "${ENABLE_PYTHON:-true}"
+        ENABLE_FULL_SKILLS: "${ENABLE_FULL_SKILLS:-false}"
 
     ports:
       - "${GOCLAW_PORT:-18790}:18790"
@@ -28,15 +31,13 @@ services:
       - GOCLAW_GATEWAY_TOKEN=${GOCLAW_GATEWAY_TOKEN:?run ./prepare-env.sh or set GOCLAW_GATEWAY_TOKEN}
       - GOCLAW_ENCRYPTION_KEY=${GOCLAW_ENCRYPTION_KEY:-}
       - GOCLAW_TRACE_VERBOSE=${GOCLAW_TRACE_VERBOSE:-0}
-      - GOCLAW_HOST=${GOCLAW_HOST:-0.0.0.0}
-      - GOCLAW_PORT=${GOCLAW_PORT:-18790}
+      - GOCLAW_HOST=0.0.0.0
+      - GOCLAW_PORT=18790
 
     volumes:
-      - ${PODCLAWS_RELEASES:-./RELEASES}/goclaw/${GOCLAW_DEPLOY_VERSION}/goclaw:/bin/goclaw:ro
       - goclaw-data:/app/data
       - goclaw-workspace:/app/workspace
       - goclaw-skills:/app/skills
-      # (this is defined for postgres service but somehow missing in the default)
 
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -48,28 +49,21 @@ services:
 
     cap_drop:
       - ALL
-    cap_add:
-      - SETUID
-      - SETGID
-      - CHOWN
+
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=256m
+
     deploy:
       resources:
         limits:
           memory: 1G
           cpus: '2.0'
           pids: 200
+
     networks:
       - default
-    restart: unless-stopped
 
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:${GOCLAW_PORT:-18790}/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+    restart: unless-stopped
 
 volumes:
   goclaw-data:

@@ -1,12 +1,6 @@
-# Podclaws root compose — goclaw service is defined in use/goclaw/service.goclaw.yml
-# This file provides the shared network and sensible-tasks volume.
-# Use overrides from use/goclaw/ for binary or dockerfile deployment.
+# Podclaws root compose — services defined in use/ directory
+# This file provides the network config.
 
 networks:
-  net:
+  default:
     driver: bridge
-  goclaw-net:
-    driver: bridge
-
-volumes:
-  sensible-tasks:

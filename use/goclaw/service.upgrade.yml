@@ -36,11 +36,6 @@ services:
 
     cap_drop:
       - ALL
-    cap_add:
-      - SETUID
-      - SETGID
-      - CHOWN
-      - CAP_DAC_OVERRIDE
 
     restart: "no"
 

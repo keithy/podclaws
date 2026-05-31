@@ -4,3 +4,5 @@
 networks:
   default:
     driver: bridge
+  goclaw-net:
+    driver: bridge

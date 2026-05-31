@@ -11,7 +11,7 @@ services:
   goclaw:
     image: localhost/goclaw:current
 
-    command: ["/bin/goclaw", "serve"]
+    command: ["/bin/goclaw"]
 
     ports:
       - "${GOCLAW_PORT:-18790}:18790"
@@ -62,6 +62,7 @@ services:
           pids: 200
     networks:
       - default
+      - goclaw-net
     restart: unless-stopped
 
     healthcheck:
@@ -75,7 +76,3 @@ volumes:
   goclaw-data:
   goclaw-workspace:
   goclaw-skills:
-
-networks:
-  net:
-    driver: bridge

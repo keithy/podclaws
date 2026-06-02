@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Test for sensible_on_host_do.sh
-# Tests: single task, task chain, runNext chaining
+# Tests: single task, task chain, runNext chaining, || fallback
 
 . "$(dirname "$0")/lib/bash-spec.sh"
 
@@ -47,19 +47,64 @@ describe "sensible_on_host_do.sh" && {
     }
 
     it "first task has runNext pointing to second" && {
-      FIRST_JSON=$(ls -t "$TASKS_PENDING"/*.json 2>/dev/null | tail -1)
-      grep -q "run_next" "$FIRST_JSON"
+      # First task created (script-1)
+      FIRST_JSON=$(ls "$TASKS_PENDING"/2026-*.json 2>/dev/null | head -1)
+      [ -f "$FIRST_JSON" ] && grep -q "run_next" "$FIRST_JSON"
       should_succeed
     }
 
     it "last task has no runNext" && {
-      LAST_JSON=$(ls -t "$TASKS_PENDING"/*.json 2>/dev/null | head -1)
-      grep -v "run_next" "$LAST_JSON" | grep -q "queued"
+      # Last task created (script-3)
+      LAST_JSON=$(ls "$TASKS_PENDING"/2026-*.json 2>/dev/null | tail -1)
+      [ -f "$LAST_JSON" ] && grep -v "run_next" "$LAST_JSON" | grep -q "queued"
       should_succeed
     }
   }
 
-  context "3. usage error" && {
+  context "3. || fallback operator" && {
+    it "combines two scripts with || into single task" && {
+      export HOST_TASKS_DIR="$TEST_TASKS_DIR"
+      rm -rf "$TEST_TASKS_DIR"
+      mkdir -p "$TASKS_PENDING"
+      
+      "$SENSIBLE_ON_HOST_DO.sh" 'build' '||' 'build-alt' 2>&1
+      
+      # Should create only 1 task (combined)
+      JSON_FILES=("$TASKS_PENDING"/*.json)
+      [ ${#JSON_FILES[@]} -eq 1 ]
+      should_succeed
+    }
+
+    it "task contains ifelse wrapper" && {
+      FIRST_JSON=$(ls -t "$TASKS_PENDING"/*.json 2>/dev/null | head -1)
+      grep -q 'ifelse { build } { } { build-alt }' "$FIRST_JSON"
+      should_succeed
+    }
+  }
+
+  context "4. || followed by more tasks" && {
+    it "creates fallback task then chains remaining" && {
+      export HOST_TASKS_DIR="$TEST_TASKS_DIR"
+      rm -rf "$TEST_TASKS_DIR"
+      mkdir -p "$TASKS_PENDING"
+      
+      "$SENSIBLE_ON_HOST_DO.sh" 'build' '||' 'build-alt' 'deploy' 2>&1
+      
+      # Should create 2 tasks: fallback task + deploy task
+      JSON_FILES=("$TASKS_PENDING"/*.json)
+      [ ${#JSON_FILES[@]} -eq 2 ]
+      should_succeed
+    }
+
+    it "fallback task has runNext to deploy" && {
+      FALLBACK_JSON=$(ls -t "$TASKS_PENDING"/*.json 2>/dev/null | tail -1)
+      grep -q 'ifelse { build } { } { build-alt }' "$FALLBACK_JSON"
+      grep -q "run_next" "$FALLBACK_JSON"
+      should_succeed
+    }
+  }
+
+  context "5. usage error" && {
     it "shows usage when no args" && {
       export HOST_TASKS_DIR="$TEST_TASKS_DIR"
       "$SENSIBLE_ON_HOST_DO.sh" 2>&1 | grep -q "Usage:"

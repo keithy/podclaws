@@ -1,5 +1,33 @@
 #!/bin/sh
 # add-python: install Python runtime
+# Usage: add-python [base|full]
+#   base  - python3 + pip + edge-tts (for basic Python skills)
+#   full  - all Python skill deps (pandas, pypdf, openpyxl, etc.)
 set -e
 
-apk add --no-cache python3 py3-pip
+MODE="${1:-base}"
+
+echo "Installing Python runtime ($MODE)..."
+
+case "${MODE}" in
+    *)
+        apk add --no-cache python3 py3-pip
+        pip3 install --no-cache-dir --break-system-packages edge-tts~=7.2.8
+        ;;&
+
+    full)
+        pip3 install --no-cache-dir --break-system-packages \
+            pypdf~=6.9.2 \
+            openpyxl~=3.1.5 \
+            python-pptx~=1.0.2 \
+            pdfplumber~=0.11.9 \
+            pdf2image~=1.17.0 \
+            "markitdown<0.2.0" \
+            pandas~=3.0.2 \
+            defusedxml~=0.7.1 \
+            lxml~=6.0.2 \
+            "anthropic>=0.88.0,<2.0.0"
+        ;;
+esac
+
+echo "Python $MODE installed successfully"

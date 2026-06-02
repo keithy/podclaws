@@ -1,12 +1,19 @@
 #!/bin/sh
 # sensible_on_host_do.sh - queue scripts for host execution
 # Client end of sensible protocol (ash/busybox compatible)
+#
+# Supports "||" as fallback operator and "&&" as chain operator:
+#   sensible-do "build" "||" "build-alt"  # fallback on failure
+#   sensible-do "build" "&&" "test"       # chain on success (ignored - default behavior)
+#   → Task1: "ifelse { build } { } { build-alt }"
 
 set -euo pipefail
 
 usage() {
   echo "Usage: sensible_on_host_do.sh <script> [<script>...]" >&2
   echo "  Queue execline scripts for host execution." >&2
+  echo "  Use '||' for fallback: \"build\" \"||\" \"build-alt\"" >&2
+  echo "  Use '&&' for chain: \"build\" \"&&\" \"test\" (default behavior)" >&2
   exit 1
 }
 
@@ -27,7 +34,6 @@ save_task() {
   local run_next="${3:-}"
   local task_file="$TASKS_DIR/pending/${file_id}.json"
 
-  # Simple JSON (no quoting/escaping for now)
   if [ -n "$run_next" ]; then
     cat > "$task_file" << EOF
 {
@@ -54,28 +60,79 @@ EOF
 
 [ $# -lt 1 ] && usage
 
+# Parse args, combining "script" "||" "fallback" into single task
 prev_file_id=""
 script_num=1
+pending_script=""
+pending_wrapped=""
 
-for script in "$@"; do
-  [ -z "$script" ] && echo "Error: empty script" >&2 && exit 1
+# Helper: save pending script and reset
+save_pending() {
+  if [ -n "$pending_wrapped" ]; then
+    file_id="$(timestamp)-script-${script_num}"
+    if [ -n "$prev_file_id" ]; then
+      prev_task_file="$TASKS_DIR/pending/${prev_file_id}.json"
+      if [ -f "$prev_task_file" ]; then
+        sed -i "s/\"status\": \"queued\"/\"status\": \"queued\",\n  \"run_next\": \"$file_id\"/" "$prev_task_file" 2>/dev/null || true
+      fi
+    fi
+    save_task "$file_id" "$pending_wrapped" ""
+    echo "$file_id"
+    prev_file_id="$file_id"
+    script_num=$((script_num + 1))
+  elif [ -n "$pending_script" ]; then
+    file_id="$(timestamp)-script-${script_num}"
+    if [ -n "$prev_file_id" ]; then
+      prev_task_file="$TASKS_DIR/pending/${prev_file_id}.json"
+      if [ -f "$prev_task_file" ]; then
+        sed -i "s/\"status\": \"queued\"/\"status\": \"queued\",\n  \"run_next\": \"$file_id\"/" "$prev_task_file" 2>/dev/null || true
+      fi
+    fi
+    save_task "$file_id" "$pending_script" ""
+    echo "$file_id"
+    prev_file_id="$file_id"
+    script_num=$((script_num + 1))
+  fi
+  pending_script=""
+  pending_wrapped=""
+}
 
+for arg in "$@"; do
+  if [ "$arg" = "||" ]; then
+    # Save current as first part of fallback
+    if [ -z "$pending_script" ]; then
+      echo "Error: || without preceding script" >&2
+      exit 1
+    fi
+    pending_wrapped="ifelse { $pending_script } { } {"
+    pending_script=""
+  elif [ "$arg" = "&&" ]; then
+    # && is ignored - chain logic handles success continuation via run_next
+    if [ -n "$pending_script" ]; then
+      save_pending
+    fi
+  elif [ -n "$pending_wrapped" ]; then
+    # We're in fallback mode - arg completes it
+    pending_wrapped="${pending_wrapped} $arg }"
+    save_pending
+  elif [ -n "$pending_script" ]; then
+    # Previous script exists but no || - save it and start new
+    save_pending
+    pending_script="$arg"
+  else
+    pending_script="$arg"
+  fi
+done
+
+# Save any remaining script
+if [ -n "$pending_script" ]; then
   file_id="$(timestamp)-script-${script_num}"
-
-  # If there's a previous task, update its runNext to point to this task
   if [ -n "$prev_file_id" ]; then
-    # Load previous task and add runNext to it
     prev_task_file="$TASKS_DIR/pending/${prev_file_id}.json"
     if [ -f "$prev_task_file" ]; then
-      # Update the runNext field in previous task
       sed -i "s/\"status\": \"queued\"/\"status\": \"queued\",\n  \"run_next\": \"$file_id\"/" "$prev_task_file" 2>/dev/null || true
     fi
   fi
-
-  # Save current task
-  save_task "$file_id" "$script" ""
+  save_task "$file_id" "$pending_script" ""
   echo "$file_id"
-
-  prev_file_id="$file_id"
-  script_num=$((script_num + 1))
-done
+fi

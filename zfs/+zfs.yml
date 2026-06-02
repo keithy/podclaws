@@ -1,0 +1,28 @@
+# ZFS volumes override - bind host ZFS datasets to container volumes
+# Usage: docker compose -f use/goclaw/service.goclaw.yml -f goclaw/docker-compose.postgres.yml -f zfs/+zfs.yml up -d
+
+volumes:
+  goclaw-data:
+    type: bind
+    source: /srv/auto_goclaw-data
+    target: /app/data
+    bind:
+      create_host_path: true
+  goclaw-workspace:
+    type: bind
+    source: /srv/auto_goclaw-workspace
+    target: /app/workspace
+    bind:
+      create_host_path: true
+  goclaw-skills:
+    type: bind
+    source: /srv/auto_goclaw-skills
+    target: /app/skills
+    bind:
+      create_host_path: true
+  postgres-data:
+    type: bind
+    source: /srv/auto_postgres-data/_data
+    target: /var/lib/postgresql/data
+    bind:
+      create_host_path: true

@@ -2,4 +2,4 @@
 # add-office: install office tools (pandoc, poppler-utils)
 set -e
 
-apk add --no-cache pandoc poppler-utils
+sudo apk add --no-cache pandoc poppler-utils

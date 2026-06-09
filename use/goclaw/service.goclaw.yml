@@ -12,6 +12,7 @@ services:
     image: localhost/goclaw:current
 
     command: ["/bin/goclaw"]
+    entrypoint: []
 
     ports:
       - "${GOCLAW_PORT:-18790}:18790"
@@ -31,8 +32,18 @@ services:
       - GOCLAW_HOST=${GOCLAW_HOST:-0.0.0.0}
       - GOCLAW_PORT=${GOCLAW_PORT:-18790}
 
+      # Runtime paths for package installs (normally set by docker-entrypoint.sh)
+      - PYTHONPATH=/app/data/.runtime/pip
+      - PIP_TARGET=/app/data/.runtime/pip
+      - PIP_BREAK_SYSTEM_PACKAGES=1
+      - PIP_CACHE_DIR=/app/data/.runtime/pip-cache
+      - NPM_CONFIG_PREFIX=/app/data/.runtime/npm-global
+      - NODE_PATH=/usr/local/lib/node_modules:/app/data/.runtime/npm-global/lib/node_modules
+      - PATH=/app/data/.runtime/bin:/app/data/.runtime/npm-global/bin:/app/data/.runtime/pip/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
     volumes:
       - ${PODCLAWS_RELEASES:-./RELEASES}/goclaw/${GOCLAW_DEPLOY_VERSION}/goclaw:/bin/goclaw:ro
+      - ${GOCLAW_DIR}/skills:/app/bundled-skills:ro
       - goclaw-data:/app/data
       - goclaw-workspace:/app/workspace
       - goclaw-skills:/app/skills
@@ -41,28 +52,36 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-    security_opt:
-      - no-new-privileges:true
+# This is the option that enables/disables sudo
+# and full self-improvement i.e. apk installs
+#    security_opt:
+#      - no-new-privileges:true
 
-    init: true
+    # default setting
+    # init: false
 
     cap_drop:
       - ALL
+
     cap_add:
       - SETUID
       - SETGID
       - CHOWN
+
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=256m
+
     deploy:
       resources:
         limits:
           memory: 1G
           cpus: '2.0'
           pids: 200
+          
     networks:
       - default
       - goclaw-net
+
     restart: unless-stopped
 
     healthcheck:

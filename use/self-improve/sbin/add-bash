@@ -2,4 +2,4 @@
 # add-bash: install bash shell
 set -e
 
-apk add --no-cache bash
+sudo apk add --no-cache bash

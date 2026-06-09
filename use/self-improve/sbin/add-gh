@@ -2,7 +2,13 @@
 # add-gh: install GitHub CLI
 set -e
 
-apk add --no-cache curl bash
-curl -fsSL https://github.com/cli/cli/releases/download/v2.63.0/gh_2.63.0_linux_amd64.tar.gz \
-  | tar -xz -C /usr/local
-ln -sf /usr/local/bin/gh /usr/local/bin/gh || true
+GH_VERSION=2.93.0
+ARCH=$(uname -m)
+[ "$ARCH" = "x86_64" ] && GH_ARCH="amd64"
+[ "$ARCH" = "aarch64" ] && GH_ARCH="arm64"
+
+sudo apk add --no-cache curl git
+curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${GH_ARCH}.tar.gz" |
+    sudo tar -xz -C /usr/local/bin
+
+sudo ln -sf /usr/local/bin/gh_${GH_VERSION}_linux_${GH_ARCH}/bin/gh /usr/local/bin/gh

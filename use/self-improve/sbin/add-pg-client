@@ -1,0 +1,50 @@
+#!/bin/sh
+
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Accept the DSN
+DSN="${GOCLAW_POSTGRES_DSN:?Error: Please provide a PostgreSQL DSN}"
+
+# 1. Pure string parsing to extract the host and port from the DSN
+# Strips the protocol prefix
+STRIPPED="${DSN#*//}"
+# Strips user/pass prefix if it exists
+HOST_PORT_PATH="${STRIPPED#*@}"
+# Strips the database path at the end
+HOST_PORT="${HOST_PORT_PATH%%/*}"
+
+# Split host and port (default to 5432 if no port is specified)
+if [[ "$HOST_PORT" == *:* ]]; then
+    HOST="${HOST_PORT%%:*}"
+    PORT="${HOST_PORT##*:}"
+else
+    HOST="$HOST_PORT"
+    PORT="5432"
+fi
+
+echo "Probing remote database at $HOST:$PORT over raw TCP..."
+
+# 2. Open a raw socket, force an error, and scan the binary response for a version number
+# We use a 2-second timeout so the script doesn't hang if the firewall drops the packet
+RAW_RESPONSE=$(echo "" | timeout 2 nc "$HOST" "$PORT" | strings || true)
+
+# Extract the major version (looks for patterns like "15.", "16.", "17.")
+MAJOR_VERSION=$(echo "$RAW_RESPONSE" | grep -oE '[0-9]+\.[0-9]+' | head -n 1 | cut -d. -f1)
+
+# Fallback in case the server is strictly hardened and hides its version string
+if [ -z "$MAJOR_VERSION" ]; then
+    echo "Could not confidently sniff version over wire. Falling back to latest stable (17)."
+    MAJOR_VERSION="17"
+else
+    echo "Detected Remote PostgreSQL Major Version: $MAJOR_VERSION"
+fi
+
+# Dynamically install the exact client needed
+CLIENT_PKG="postgresql${MAJOR_VERSION}-client"
+
+echo "Installing $CLIENT_PKG..."
+
+sudo apk add --no-cache "$CLIENT_PKG"
+
+

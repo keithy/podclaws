@@ -2,8 +2,30 @@
 # add-oils: install Oil shell
 set -e
 
-apk add --no-cache curl bash
-curl -fsSL https://install.oilshell.org/release/0.24.0/install.tgz \
-  | tar -xz -C /usr/local
-ln -sf /usr/local/oils-for-unix/bin/oil /usr/local/bin/oil || true
-ln -sf /usr/local/oils-for-unix/bin/osh /usr/local/bin/osh || true
+# 1. Install build dependencies
+sudo apk add --no-cache --virtual build-deps build-base curl
+
+sudo mkdir -p /usr/local/lib/oils_src
+sudo chown -R $(id -u):$(id -g) /usr/local/lib/oils_src
+
+# 2. Grab the latest source tarball (Adjust version if chasing a newer release)
+curl -fsSL https://oils.pub/download/oils-for-unix-0.37.0.tar.gz |
+  tar -xz --strip-components=1 -C /usr/local/lib/oils_src
+
+cd /usr/local/lib/oils_src
+
+mkdir tmp
+TMPDIR=./tmp
+
+sudo chown -R $(id -u):$(id -g) /usr/local/lib/oils_src
+
+# 3. Configure, build, and install
+./configure
+_build/oils.sh
+
+# Running the tests is optional but recommended on musl-based Alpine
+./test/unit.sh 
+
+sudo ./install
+
+sudo apk del --no-cache build-deps

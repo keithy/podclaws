@@ -37,6 +37,7 @@ services:
 
     volumes:
       - ${PODCLAWS_RELEASES:-./RELEASES}/goclaw/${GOCLAW_DEPLOY_VERSION}/goclaw:/bin/goclaw:ro
+      - ${PODCLAWS_RELEASES:-./RELEASES}/goclaw/${GOCLAW_DEPLOY_VERSION}/pkg-helper:/bin/pkg-helper:ro
       - ${GOCLAW_DIR}/skills:/app/bundled-skills:ro
       - goclaw-data:/app/data
       - goclaw-workspace:/app/workspace

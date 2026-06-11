@@ -35,7 +35,7 @@ help: ## Show this help
 # Build current host architecture
 # --------------------------------------------------------------------
 
-build: $(RELEASES_DIR)/$(VERSION)/goclaw latest-link
+build: $(RELEASES_DIR)/$(VERSION)/goclaw $(RELEASES_DIR)/$(VERSION)/pkg-helper latest-link
 
 $(RELEASES_DIR)/$(VERSION)/goclaw:
 	@mkdir -p $(RELEASES_DIR)/$(VERSION)
@@ -46,6 +46,13 @@ $(RELEASES_DIR)/$(VERSION)/goclaw:
 	@echo "  ARCH     $(GOOS)/$(GOARCH)"
 	@echo "  OUTPUT   $(RELEASES_DIR)/$(VERSION)/"
 	@echo "Built: $(RELEASES_DIR)/$(VERSION)/goclaw"
+
+$(RELEASES_DIR)/$(VERSION)/pkg-helper:
+	@mkdir -p $(RELEASES_DIR)/$(VERSION)
+	cd $(GOCLAW_DIR) && CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) \
+		go build -ldflags="-s -w" -o $(RELEASES_DIR)/$(VERSION)/pkg-helper ./cmd/pkg-helper
+	@cd $(RELEASES_DIR)/$(VERSION) && sha256sum pkg-helper > pkg-helper.sha256
+	@echo "Built: $(RELEASES_DIR)/$(VERSION)/pkg-helper"
 
 # --------------------------------------------------------------------
 # Symlink: RELEASES/goclaw/latest → RELEASES/goclaw/$VERSION

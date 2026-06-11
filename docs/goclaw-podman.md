@@ -96,6 +96,14 @@ Set in `mise/podman-resources/mise.podman.toml`:
 | `DOCKER_CMD` | `docker` | CLI command (`podman` or `docker`) |
 | `PODMAN_COMPOSE_WARNING_LOGS` | `false` | Suppress podman-compose warnings |
 
+## Native Package Installation (Podman specific)
+
+By default, Docker uses `pkg-helper` (a root socket daemon) and isolates Pip/NPM installations into `/app/data/.runtime`. Since we use rootless Podman and commit our environments, this behavior is changed:
+
+1. **System Packages (`apk`)**: The `pkg-helper` daemon is bypassed. When GoClaw needs to install an `apk` package, it utilizes our upstream PR (#1210) to execute `pkg-helper` as a subprocess. Our custom `add-*` scripts use `sudo apk`, natively leveraging the host-mapped user's sudo capabilities.
+2. **Pip/NPM**: We do not override `PIP_TARGET` or `NPM_CONFIG_PREFIX`. Packages are installed globally into the container's native `/usr/lib/python...` and `/usr/local/lib/node_modules` instead of the `.runtime` shared volume.
+3. **Persistence**: Since packages are installed directly into the container's filesystem, they are persisted by committing the Podman container to an image, rather than relying on volume mounts.
+
 ## Tasks
 
 Available mise tasks:

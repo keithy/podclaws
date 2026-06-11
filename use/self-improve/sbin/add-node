@@ -2,4 +2,4 @@
 # add-node: install Node.js runtime
 set -e
 
-apk add --no-cache nodejs npm
+sudo apk add --no-cache nodejs npm

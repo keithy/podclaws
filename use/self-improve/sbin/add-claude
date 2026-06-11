@@ -2,6 +2,6 @@
 # add-claude: install Claude CLI
 set -e
 
-apk add --no-cache nodejs npm
+sudo apk add --no-cache nodejs npm
 npm install -g @anthropic-ai/claude-code@^2.1.91
 echo "Claude CLI installed"

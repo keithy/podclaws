@@ -9,24 +9,25 @@ MODE="${1:-base}"
 
 echo "Installing Python runtime ($MODE)..."
 
-case "${MODE}" in
-    *)
-        apk add --no-cache python3 py3-pip
-        pip3 install --no-cache-dir --break-system-packages edge-tts~=7.2.8
-        ;;&
+# Base installation applies to all modes
+sudo apk add --no-cache python3 py3-pip
+pip3 install --no-cache-dir --break-system-packages edge-tts~=7.2.8
 
+case "${MODE}" in
     full)
-        pip3 install --no-cache-dir --break-system-packages \
-            pypdf~=6.9.2 \
-            openpyxl~=3.1.5 \
-            python-pptx~=1.0.2 \
-            pdfplumber~=0.11.9 \
-            pdf2image~=1.17.0 \
+        for pkg in \
+            "pypdf~=6.9.2" \
+            "openpyxl~=3.1.5" \
+            "python-pptx~=1.0.2" \
+            "pdfplumber~=0.11.9" \
+            "pdf2image~=1.17.0" \
             "markitdown<0.2.0" \
-            pandas~=3.0.2 \
-            defusedxml~=0.7.1 \
-            lxml~=6.0.2 \
-            "anthropic>=0.88.0,<2.0.0"
+            "pandas~=3.0.2" \
+            "defusedxml~=0.7.1" \
+            "lxml~=6.0.2" \
+            "anthropic>=0.88.0,<2.0.0"; do
+            pip3 install --no-cache-dir --break-system-packages "$pkg"
+        done
         ;;
 esac
 

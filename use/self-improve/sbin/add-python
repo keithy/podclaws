@@ -11,7 +11,6 @@ echo "Installing Python runtime ($MODE)..."
 
 # Base installation applies to all modes
 sudo apk add --no-cache python3 py3-pip
-pip3 install --no-cache-dir --break-system-packages edge-tts~=7.2.8
 
 case "${MODE}" in
     full)
@@ -26,6 +25,7 @@ case "${MODE}" in
             "defusedxml~=0.7.1" \
             "lxml~=6.0.2" \
             "anthropic>=0.88.0,<2.0.0"; do
+            
             pip3 install --no-cache-dir --break-system-packages "$pkg"
         done
         ;;

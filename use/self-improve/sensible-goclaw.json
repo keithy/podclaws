@@ -2,6 +2,11 @@
   "serviceName": "sensible-goclaw",
   "tasksDir": "/srv/auto_goclaw-data/.runtime/sensible/tasks",
   "keysDir": "/srv/auto_goclaw-data/.runtime/sensible/keys",
-  "whitelist": ["^podman commit"],
+  "whitelist": [
+    "^podman commit",
+    "^podman rmi",
+    "^podman tag",
+    "^podman restart"
+  ],
   "blacklist": ["^.*"]
 }

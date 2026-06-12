@@ -1,0 +1,6 @@
+# Agents can access code
+
+services:
+  goclaw:
+    volumes:
+      - /code:/code

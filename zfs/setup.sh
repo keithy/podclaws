@@ -39,41 +39,46 @@ zfs_create -o mountpoint=/srv/${project}_goclaw-skills    "${DATASET}/skills"
 zfs_create -o mountpoint=/srv/${project}_postgres-data    "${DATASET}/postgres"
 
 # Create the shared mise-cache volume outside the 'safe' boundary.
-# It lives in 'cache' (ephemeral, not backed up) and intentionally uses a hardcoded
-# path (not project-prefixed) so all containers/agents share the exact same toolchain
-# cache (e.g. main goclaw container, sandboxes, etc).
+# It lives in 'cache' (ephemeral, not backed up).
 #
-# 'installs/musl' explicitly namespaces the architecture/libc-specific binaries
-# (Alpine containers). In the future, an 'installs/glibc' could be added for
-# Ubuntu-slim containers without naming conflicts.
-# The 'cache' subdirectory is architecture-independent (tarballs/wheels), so it
-# can be safely shared across all container types.
-# Use -p to create all parent datasets automatically (e.g. rock-pool/cache/mise)
-zfs_create -p -o mountpoint=/srv/mise/installs/musl       "${POOL}/cache/mise/installs/musl"
-zfs_create -p -o mountpoint=/srv/mise/installs/glibc     "${POOL}/cache/mise/installs/glibc"
-zfs_create -p -o mountpoint=/srv/mise/cache              "${POOL}/cache/mise/cache"
+# Mountpoints follow the established project-volume convention:
+#   /srv/${project}_mise-cache/         (parent, regular directory)
+#   /srv/${project}_mise-cache/_data/   (the actual ZFS mountpoint)
+# This matches how goclaw-data, goclaw-workspace, postgres-data, etc
+# are already structured (parent dir owned by user, _data subdir is ZFS).
+# Podman auto-creates anonymous volumes at these paths and uses the
+# _data subdir, which naturally resolves to our ZFS dataset.
+zfs_create -p -o mountpoint=/srv/${project}_mise-cache/_data     "${POOL}/cache/mise/cache"
+zfs_create -p -o mountpoint=/srv/${project}_mise-installs/_data "${POOL}/cache/mise/installs"
 
 # Fix ownership of all newly created mountpoints (sudo zfs create makes them root-owned)
 chown_mountpoint /srv/${project}_goclaw-data
 chown_mountpoint /srv/${project}_goclaw-workspace
 chown_mountpoint /srv/${project}_goclaw-skills
 chown_mountpoint /srv/${project}_postgres-data
-chown_mountpoint /srv/mise
-chown_mountpoint /srv/mise/installs
-chown_mountpoint /srv/mise/installs/musl
-chown_mountpoint /srv/mise/installs/glibc
-chown_mountpoint /srv/mise/cache
+chown_mountpoint /srv/${project}_mise-cache/_data
+chown_mountpoint /srv/${project}_mise-installs/_data
 
-# Pre-create _data subdirs with correct ownership so podman doesn't create as root
+# Pre-create the _data subdirs (parent dirs already exist as regular dirs)
+# so podman doesn't need to create them as root.
+# The mise subdirs are the actual targets where mise stores toolchains.
 mkdir -p /srv/${project}_goclaw-data/_data
 mkdir -p /srv/${project}_goclaw-workspace/_data
 mkdir -p /srv/${project}_goclaw-skills/_data
 mkdir -p /srv/${project}_postgres-data/_data
-mkdir -p /srv/mise/installs/musl/_data
-mkdir -p /srv/mise/installs/glibc/_data
-mkdir -p /srv/mise/cache/_data
+# For the mise volumes, the _data subdir is the ZFS mountpoint itself,
+# so it was pre-created by zfs_create above. We just need to ensure the
+# parent directory exists with correct ownership.
+mkdir -p /srv/${project}_mise-cache
+mkdir -p /srv/${project}_mise-installs
 
-chown -R "${HOST_UID}:${HOST_GID}" /srv/${project}_goclaw-data /srv/${project}_goclaw-workspace /srv/${project}_goclaw-skills /srv/${project}_postgres-data /srv/mise
+chown -R "${HOST_UID}:${HOST_GID}" \
+    /srv/${project}_goclaw-data \
+    /srv/${project}_goclaw-workspace \
+    /srv/${project}_goclaw-skills \
+    /srv/${project}_postgres-data \
+    /srv/${project}_mise-cache \
+    /srv/${project}_mise-installs
 
 # Surgical permission fix: enforce the setgid bit (g+s) on all directories
 # to guarantee that newly created files inherit the 'coder' group.
@@ -87,9 +92,8 @@ ensure_setgid() {
 }
 
 # Apply setgid to the shared cache (group-writable)
-ensure_setgid /srv/mise
-ensure_setgid /srv/mise/installs
-ensure_setgid /srv/mise/cache
+ensure_setgid /srv/${project}_mise-cache
+ensure_setgid /srv/${project}_mise-installs
 
 # Apply setgid to the project data (group-readable, writable by owner)
 ensure_setgid /srv/${project}_goclaw-data

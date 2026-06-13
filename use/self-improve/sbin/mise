@@ -10,7 +10,25 @@ fi
 
 if [ -z "$REAL_MISE" ]; then
     echo "[Shim] Bootstrapping mise..." >&2
-    wget -qO- https://mise.run | sh
+    # Retry the install up to 3 times to handle transient network issues
+    # (e.g. "wget: connection closed prematurely" from HTTPS timeouts).
+    # The default /tmp is sized adequately (256MB tmpfs in the container) for
+    # the ~30MB mise tarball, so we just rely on the retry mechanism.
+    attempt=1
+    while [ $attempt -le 3 ]; do
+        if wget -qO- https://mise.run | sh; then
+            break
+        fi
+        echo "[Shim] Bootstrap attempt $attempt failed, retrying..." >&2
+        attempt=$((attempt + 1))
+        sleep 2
+    done
+    
+    if [ ! -x "${HOME}/.local/bin/mise" ]; then
+        echo "[Shim] ERROR: mise bootstrap failed after 3 attempts." >&2
+        echo "[Shim] Check network connectivity to https://mise.run" >&2
+        exit 1
+    fi
     
     REAL_MISE="${HOME}/.local/bin/mise"
     # Disable asdf backend to force native/vfox/core backends
@@ -19,3 +37,4 @@ fi
 
 # Execute the real mise
 exec "$REAL_MISE" "$@"
+

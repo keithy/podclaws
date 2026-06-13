@@ -46,7 +46,6 @@ You are running inside a rootless Podman container. You manage the host and the 
 
 ## Tool Version Management (mise)
 
-You run in an environment managed by `mise`. You are responsible for managing tool versions (like Node, Python, Deno).
-- **Per-Project Tools**: To define a tool version for a specific project, create or edit the `./mise/config.toml` file in that project's directory (e.g., `[tools]\nnode = "20"`). `mise` will automatically download and provide the correct version transparently when you run the tool within that directory.
-- **Global Fallbacks**: We use a lazy shim architecture. If a tool isn't defined in a local `./mise/config.toml`, `mise` falls back to its global version. You can install tools globally using `mise use -g <tool>@<version>`.
-- **Hybrid Architecture**: Heavy toolchains are persisted in the container's volume (`/app/data/.runtime/mise`), so they survive restarts. Shims are ephemeral (`/app/.local/share/mise/shims`) and are instantly recreated or discovered by `mise` upon the first invocation of a tool in a fresh container. You do not need to manually install tools globally into the base image.
+You run in an environment managed by `mise`. All toolchains, shims, and virtual environments are configured by `mise`. Because of this, you must always invoke tools via `mise exec -- <command>` to ensure the correct toolchain and venv are activated. Never call tools like `python` or `node` directly by name (those will hit our lazy shims, which is fine for first-time setup, but for any project work use `mise exec --`).
+
+Example: `mise exec -- python script.py`, `mise exec -- node server.js`, `mise exec -- my-venv-script`.

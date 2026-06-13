@@ -41,11 +41,17 @@ zfs_create -o mountpoint=/srv/${project}_postgres-data    "${DATASET}/postgres"
 # Create the shared mise-cache volume outside the 'safe' boundary.
 # It lives in 'cache' (ephemeral, not backed up).
 #
-# Mountpoints follow the established project-volume convention:
-#   /srv/${project}_mise-cache/         (parent, regular directory)
-#   /srv/${project}_mise-cache/_data/   (the actual ZFS mountpoint)
+# CRITICAL: ZFS mountpoints MUST be on the /_data subdir, NOT the parent
+# folder. Podman stores internal volume metadata (e.g. opts.json) in the
+# parent directory. If we mounted ZFS over the parent, the ZFS mount
+# would MASK (hide) podman's metadata, causing storage corruption and
+# failed deployments. The _data subdir is the safe mount target.
+#
+# Layout matches the established project-volume convention:
+#   /srv/${project}_mise-cache/         (parent, plain dir, podman metadata)
+#   /srv/${project}_mise-cache/_data/   (ZFS mountpoint, container data)
 # This matches how goclaw-data, goclaw-workspace, postgres-data, etc
-# are already structured (parent dir owned by user, _data subdir is ZFS).
+# are already structured (parent dir owned by podman, _data subdir is ZFS).
 # Podman auto-creates anonymous volumes at these paths and uses the
 # _data subdir, which naturally resolves to our ZFS dataset.
 zfs_create -p -o mountpoint=/srv/${project}_mise-cache/_data     "${POOL}/cache/mise/cache"

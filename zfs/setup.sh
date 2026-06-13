@@ -30,53 +30,50 @@ chown_mountpoint() {
 
 echo "Creating ZFS datasets for podclaws..."
 
-# Create datasets with host paths matching container expectations
-# Container expects: /app/data, /app/workspace, /app/skills
-# Host mounts to: /srv/${project}_goclaw-data, /srv/${project}_goclaw-workspace, /srv/${project}_goclaw-skills
-zfs_create -o mountpoint=/srv/${project}_goclaw-data      "${DATASET}/data"
-zfs_create -o mountpoint=/srv/${project}_goclaw-workspace "${DATASET}/work"
-zfs_create -o mountpoint=/srv/${project}_goclaw-skills    "${DATASET}/skills"
-zfs_create -o mountpoint=/srv/${project}_postgres-data    "${DATASET}/postgres"
+# Create datasets with host paths matching container expectations.
+#
+# CRITICAL: ALL ZFS mountpoints MUST be on the /_data subdir, NOT the parent.
+# Podman stores internal volume metadata (e.g. opts.json) in the parent
+# directory. If we mounted ZFS over the parent, the ZFS mount would MASK
+# (hide) podman's metadata, causing storage corruption and failed deployments.
+# The _data subdir is the safe mount target.
+#
+# Layout convention (used for ALL project volumes):
+#   /srv/${project}_<name>/         (parent, plain dir, podman metadata)
+#   /srv/${project}_<name>/_data/   (ZFS mountpoint, container data)
+#
+# Container paths: /app/data, /app/workspace, /app/skills, /var/lib/postgresql/data
+# Host paths:       /srv/${project}_goclaw-data/_data, etc.
+zfs_create -o mountpoint=/srv/${project}_goclaw-data/_data      "${DATASET}/data"
+zfs_create -o mountpoint=/srv/${project}_goclaw-workspace/_data "${DATASET}/work"
+zfs_create -o mountpoint=/srv/${project}_goclaw-skills/_data    "${DATASET}/skills"
+zfs_create -o mountpoint=/srv/${project}_postgres-data/_data    "${DATASET}/postgres"
 
 # Create the shared mise-cache volume outside the 'safe' boundary.
 # It lives in 'cache' (ephemeral, not backed up).
-#
-# CRITICAL: ZFS mountpoints MUST be on the /_data subdir, NOT the parent
-# folder. Podman stores internal volume metadata (e.g. opts.json) in the
-# parent directory. If we mounted ZFS over the parent, the ZFS mount
-# would MASK (hide) podman's metadata, causing storage corruption and
-# failed deployments. The _data subdir is the safe mount target.
-#
-# Layout matches the established project-volume convention:
-#   /srv/${project}_mise-cache/         (parent, plain dir, podman metadata)
-#   /srv/${project}_mise-cache/_data/   (ZFS mountpoint, container data)
-# This matches how goclaw-data, goclaw-workspace, postgres-data, etc
-# are already structured (parent dir owned by podman, _data subdir is ZFS).
-# Podman auto-creates anonymous volumes at these paths and uses the
-# _data subdir, which naturally resolves to our ZFS dataset.
+# Same _data subdir convention as above.
 zfs_create -p -o mountpoint=/srv/${project}_mise-cache/_data     "${POOL}/cache/mise/cache"
 zfs_create -p -o mountpoint=/srv/${project}_mise-installs/_data "${POOL}/cache/mise/installs"
 
 # Fix ownership of all newly created mountpoints (sudo zfs create makes them root-owned)
-chown_mountpoint /srv/${project}_goclaw-data
-chown_mountpoint /srv/${project}_goclaw-workspace
-chown_mountpoint /srv/${project}_goclaw-skills
-chown_mountpoint /srv/${project}_postgres-data
+chown_mountpoint /srv/${project}_goclaw-data/_data
+chown_mountpoint /srv/${project}_goclaw-workspace/_data
+chown_mountpoint /srv/${project}_goclaw-skills/_data
+chown_mountpoint /srv/${project}_postgres-data/_data
 chown_mountpoint /srv/${project}_mise-cache/_data
 chown_mountpoint /srv/${project}_mise-installs/_data
 
-# Pre-create the _data subdirs (parent dirs already exist as regular dirs)
+# Pre-create the parent _data subdirs (parent dirs already exist as regular dirs)
 # so podman doesn't need to create them as root.
-# The mise subdirs are the actual targets where mise stores toolchains.
-mkdir -p /srv/${project}_goclaw-data/_data
-mkdir -p /srv/${project}_goclaw-workspace/_data
-mkdir -p /srv/${project}_goclaw-skills/_data
-mkdir -p /srv/${project}_postgres-data/_data
-# For the mise volumes, the _data subdir is the ZFS mountpoint itself,
-# so it was pre-created by zfs_create above. We just need to ensure the
-# parent directory exists with correct ownership.
+# The _data subdirs are the actual targets where container data lives.
+mkdir -p /srv/${project}_goclaw-data
+mkdir -p /srv/${project}_goclaw-workspace
+mkdir -p /srv/${project}_goclaw-skills
+mkdir -p /srv/${project}_postgres-data
 mkdir -p /srv/${project}_mise-cache
 mkdir -p /srv/${project}_mise-installs
+# The ZFS mounts create _data subdirs automatically; just chown them.
+# (zfs_create already mounted the datasets, so the _data dirs exist.)
 
 chown -R "${HOST_UID}:${HOST_GID}" \
     /srv/${project}_goclaw-data \

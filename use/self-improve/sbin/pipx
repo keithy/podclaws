@@ -1,0 +1,10 @@
+#!/bin/sh
+# Lazy shim for pipx using mise
+
+echo "[Shim] pipx requested. Bootstrapping mise and installing globally..." >&2
+
+# We might need python globally as well to run pipx properly
+mise use -g python@latest
+mise use -g pipx@latest
+
+exec mise exec -- pipx "$@"

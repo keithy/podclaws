@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Setup podman rootless server config
 # Copies pre-configured files to ~/.config/containers/
+
 set -euo pipefail
 
 SCRIPT="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT}")" && pwd)"
-GOCLAW_DIR="$SCRIPT_DIR/../goclaw"
+GOCLAW_DIR="$(realpath $SCRIPT_DIR/../goclaw)"
 
 # Colors
 RED='\033[0;31m'
@@ -129,18 +130,6 @@ echo -e "${BLUE}─── Installing configs ───────────�
 
 cp -r "$SCRIPT_DIR/config/containers/." "$CONFIG_DIR/"
 
-# ─── Compose Overlays ──────────────────────────────────────────────
-echo ""
-echo -e "${BLUE}─── Compose Overlays Available ──────────────────────────${NC}"
-echo ""
-echo "Podman overlay files are in: podman/"
-echo "  • podman/+network-fix.yml  - fixes podman networking"
-echo "  • podman/+user-fix.yml     - fixes rootless setup"
-echo ""
-echo "To use, add to COMPOSE_FILE manually:"
-echo "  export COMPOSE_FILE=goclaw/docker-compose.yml:\$GOCLAW_DIR/podman/+network-fix.yml:\$GOCLAW_DIR/podman/+user-fix.yml"
-echo ""
-
 # ─── Summary ──────────────────────────────────────────────────────
 echo ""
 echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
@@ -169,8 +158,8 @@ if command -v mise &>/dev/null; then
 
   echo "config.podman.toml sets env_file = \".env\" to auto-load .env on cd."
   echo ""
-  echo "If COMPOSE_FILE is in .env, ensure mise env is active:"
-  echo -e "  ${YELLOW}cd "$GOCLAW_DIR" && mise env${NC}"
+  echo "Verify environment:"
+  echo -e "  ${YELLOW}mise env${NC}"
   echo ""
 else
   echo "Without mise, you must source .env manually (.bashrc?) before compose:"

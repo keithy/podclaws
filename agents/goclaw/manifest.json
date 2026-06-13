@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "format": "goclaw-agent-export",
+  "exported_at": "2026-06-12T14:46:35Z",
+  "exported_by": "system",
+  "agent_key": "goclaw",
+  "agent_id": "019eba84-bf1d-711e-9f41-eef3d05427c8",
+  "sections": {
+    "config": {
+      "count": 1
+    },
+    "context_files": {
+      "count": 7
+    },
+    "user_context_files": {
+      "count": 0
+    }
+  }
+}

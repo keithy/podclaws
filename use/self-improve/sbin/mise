@@ -1,0 +1,21 @@
+#!/bin/sh
+# Lazy shim for mise
+
+REAL_MISE=""
+if [ -x "${HOME}/.local/bin/mise" ]; then
+    REAL_MISE="${HOME}/.local/bin/mise"
+elif command -v mise >/dev/null 2>&1 && [ "$(command -v mise)" != "$0" ] && [ "$(command -v mise)" != "$(realpath "$0" 2>/dev/null || echo "")" ]; then
+    REAL_MISE="$(command -v mise)"
+fi
+
+if [ -z "$REAL_MISE" ]; then
+    echo "[Shim] Bootstrapping mise..." >&2
+    wget -qO- https://mise.run | sh
+    
+    REAL_MISE="${HOME}/.local/bin/mise"
+    # Disable asdf backend to force native/vfox/core backends
+    "$REAL_MISE" settings add disable_backends asdf
+fi
+
+# Execute the real mise
+exec "$REAL_MISE" "$@"

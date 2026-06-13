@@ -1,0 +1,8 @@
+#!/bin/sh
+# Lazy shim for npm using mise (npm is bundled with node)
+
+echo "[Shim] npm requested. Bootstrapping mise and installing node globally..." >&2
+
+mise use -g node@latest
+
+exec mise exec -- npm "$@"

@@ -88,3 +88,7 @@ ui/web/nginx.staging.conf
 
 # Versioned release binaries
 RELEASES/
+
+# AI memory
+.crush/
+.crush

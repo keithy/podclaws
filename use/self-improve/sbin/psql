@@ -1,0 +1,17 @@
+#!/bin/sh
+# Lazy shim for psql
+
+if [ ! -x "/usr/bin/psql" ] && [ ! -x "/usr/local/bin/psql" ]; then
+    echo "[Shim] psql requested. Bootstrapping via add-pg-client..." >&2
+    "$(dirname "$0")/add-pg-client"
+fi
+
+# Fallback to the real binary
+if [ -x "/usr/bin/psql" ]; then
+    exec /usr/bin/psql "$@"
+elif [ -x "/usr/local/bin/psql" ]; then
+    exec /usr/local/bin/psql "$@"
+else
+    echo "[Shim] Error: psql not found after installation." >&2
+    exit 1
+fi

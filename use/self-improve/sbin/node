@@ -1,0 +1,8 @@
+#!/bin/sh
+# Lazy shim for node using mise
+
+echo "[Shim] node requested. Bootstrapping mise and installing globally..." >&2
+
+mise use -g node@latest
+
+exec mise exec -- node "$@"

@@ -26,3 +26,9 @@ volumes:
     target: /var/lib/postgresql/data
     bind:
       create_host_path: true
+  mise-cache:
+    type: bind
+    source: /srv/auto_mise-cache
+    target: /usr/share/mise
+    bind:
+      create_host_path: true

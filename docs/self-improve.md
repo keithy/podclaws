@@ -50,7 +50,7 @@ GoClaw is completely unaware of `mise`, ZFS volumes, or shim directories. It jus
 
 #### Per-Version Package Isolation
 
-Because `mise` installs each tool version into its own directory (e.g., `/srv/mise/installs/glibc/installs/python/3.11.x/`, `python/3.12.x/`, etc.), pip packages are *strictly scoped* to their parent interpreter. 
+Because `mise` installs each tool version into its own directory (e.g., `/srv/auto_mise-glibc/_data/installs/python/3.11.x/`, `python/3.12.x/`, etc.), pip packages are *strictly scoped* to their parent interpreter. 
 
 - `pip3 install pandas` invoked under Python 3.11 installs to `python/3.11.x/lib/.../site-packages/pandas/`.
 - `pip3 install pandas` invoked under Python 3.12 installs to `python/3.12.x/lib/.../site-packages/pandas/`.

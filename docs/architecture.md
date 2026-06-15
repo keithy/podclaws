@@ -19,19 +19,37 @@ A unified system for managing Python, Node, Deno, Go, and other runtimes inside 
 
 ## 3. Hybrid Persistence
 
-We split `mise`'s data into two distinct volumes on a shared ZFS filesystem:
+We split `mise`'s data into three ZFS-backed podman volumes, named to match
+the podman volume convention (auto-prefix from COMPOSE_PROJECT_NAME):
 
-- **Heavy Installs (Persisted, Shared via ZFS)**: Compiled toolchains are stored under `/srv/mise/installs/{glibc,musl}`. This volume is shared across all containers (and host users) with matching libc. Survives container restarts.
-- **Downloaded Tarballs (Persisted, Architecture-Independent)**: Downloaded tarballs, wheels, and source files live in `/srv/mise/cache`. This volume is shareable across any container type (Alpine, Ubuntu, etc.) for maximum cache hits.
-- **Shims (Ephemeral)**: The routing shims in `/app/.local/share/mise/shims` (containers) and `~/.local/share/mise/shims` (host) are local to each environment, ensuring fresh boots start with a clean, predictable `PATH`.
+- **Heavy Installs - glibc (Persisted, Shared via ZFS)**: Compiled toolchains for
+  the glibc family are stored at `/srv/auto_mise-glibc/_data/installs/`. The
+  ZFS dataset is `rock-pool/mise/data-glibc`. This volume is shared across all
+  host users and any glibc-based containers (Debian, Ubuntu, RedHat). Survives
+  container restarts.
+- **Heavy Installs - musl (Persisted, Shared via ZFS)**: Compiled toolchains for
+  the musl family (Alpine containers) are stored at
+  `/srv/auto_mise-musl/_data/installs/`. The ZFS dataset is
+  `rock-pool/mise/data-musl`. Shared across all Alpine-based containers.
+- **Downloaded Tarballs (Persisted, Architecture-Independent)**: Downloaded
+  tarballs, wheels, and source files live in `/srv/auto_mise-cache/_data/`.
+  This volume is shareable across any container type (Alpine, Ubuntu, etc.)
+  for maximum cache hits. The ZFS dataset is `rock-pool/cache/mise`.
+- **Shims (Ephemeral)**: The routing shims in `/app/.local/share/mise/shims`
+  (containers) and `~/.local/share/mise/shims` (host) are local to each
+  environment, ensuring fresh boots start with a clean, predictable `PATH`.
+
+**Important**: Never share the data dirs (installs) across different libcs or
+architectures. Compiled binaries are not portable.
 
 ## 4. Host Setup (Multi-User Shared Cache)
 
 On the host, the system-wide `/etc/profile.d/mise.sh` configures:
-- `MISE_DATA_DIR=/srv/mise/installs/glibc` — shared toolchains
+- `MISE_DATA_DIR=/srv/auto_mise-glibc/_data` — shared glibc toolchains
 - `MISE_SHIMS_DIR=~/.local/share/mise/shims` — per-user shims (preserves version autonomy)
 
-This lets multiple users on the host share the same heavy toolchains via ZFS while independently selecting their own tool versions.
+This lets multiple users on the host share the same heavy toolchains via ZFS
+while independently selecting their own tool versions.
 
 ## 5. Project-Level Configurations
 

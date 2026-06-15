@@ -32,11 +32,19 @@ services:
       - GOCLAW_PORT=${GOCLAW_PORT:-18790}
       
       # Mise hybrid configuration:
-      # MISE_INSTALLS_DIR holds compiled binaries (architecture/OS specific).
-      # MISE_CACHE_DIR holds downloaded tarballs/wheels (architecture-independent, shareable).
-      - MISE_INSTALLS_DIR=/usr/share/mise/installs
-      - MISE_CACHE_DIR=/usr/share/mise/cache
+      # MISE_DATA_DIR holds compiled binaries (architecture + libc specific).
+      #   Mounted from the 'mise-musl' volume at /usr/share/mise. The volume's
+      #   root maps to the data dir; mise puts binaries at $MISE_DATA_DIR/installs/.
+      #   Shared within a libc family (Alpine/musl consumers) but NOT across
+      #   different libcs - compiled toolchains are not portable.
+      - MISE_DATA_DIR=/usr/share/mise
       - MISE_SHIMS_DIR=/app/.local/share/mise/shims
+
+      # MISE_CACHE_DIR: not set explicitly - mise uses the XDG default
+      # ($HOME/.cache/mise = /app/.cache/mise since HOME=/app). The 'mise-cache'
+      # volume is mounted at this path so downloads persist across container
+      # restarts.
+      # MISE_CACHE_DIR holds downloaded tarballs/wheels (architecture-independent, shareable).
 
       # Runtime paths for package installs (normally set by docker-entrypoint.sh)
       - PIP_BREAK_SYSTEM_PACKAGES=1
@@ -48,8 +56,8 @@ services:
       - ${GOCLAW_DIR}/skills:/app/bundled-skills:ro
       - goclaw-data:/app/data
       - goclaw-workspace:/app/workspace
-      - mise-installs:/usr/share/mise/installs
-      - mise-cache:/usr/share/mise/cache
+      - mise-musl:/usr/share/mise
+      - mise-cache:/app/.cache/mise
 
       # (this is defined for postgres service but somehow missing in the default)
 
@@ -98,5 +106,5 @@ services:
 volumes:
   goclaw-data:
   goclaw-workspace:
-  mise-installs:
+  mise-musl:
   mise-cache:

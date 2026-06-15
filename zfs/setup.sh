@@ -8,6 +8,8 @@
 #
 # Datasets are created under rock-pool/safe/goclaw (backed up) and
 # rock-pool/cache/mise (not backed up, shared toolchains).
+# Per-libc data dirs are under rock-pool/mise/data-{glibc,musl}, named to
+# mirror the podman volume names (auto_mise-glibc / auto_mise-musl).
 set -e
 
 project="$COMPOSE_PROJECT_NAME"
@@ -63,9 +65,14 @@ zfs_create "${DATASET}/work"     "/srv/${project}_goclaw-workspace/_data"
 zfs_create "${DATASET}/skills"   "/srv/${project}_goclaw-skills/_data"
 zfs_create "${DATASET}/postgres" "/srv/${project}_postgres-data/_data"
 
-# Shared mise cache (cache, not backed up)
-zfs_create "${POOL}/cache/mise/cache"     "/srv/${project}_mise-cache/_data"
-zfs_create "${POOL}/cache/mise/installs" "/srv/${project}_mise-installs/_data"
+# Shared mise cache (not backed up, used by containers)
+zfs_create "${POOL}/cache/mise" "/srv/${project}_mise-cache/_data"
+
+# Per-libc mise data dirs (not backed up, shared within each libc family).
+# Each dataset is mounted at the podman volume's _data subdir, so the data
+# is visible at the path podman expects.
+zfs_create "${POOL}/mise/data-glibc" "/srv/${project}_mise-glibc/_data"
+zfs_create "${POOL}/mise/data-musl"  "/srv/${project}_mise-musl/_data"
 
 echo ""
 echo "=== Verifying mountpoints ==="
@@ -73,8 +80,9 @@ fix_mountpoint "${DATASET}/data"     "/srv/${project}_goclaw-data/_data"
 fix_mountpoint "${DATASET}/work"     "/srv/${project}_goclaw-workspace/_data"
 fix_mountpoint "${DATASET}/skills"   "/srv/${project}_goclaw-skills/_data"
 fix_mountpoint "${DATASET}/postgres" "/srv/${project}_postgres-data/_data"
-fix_mountpoint "${POOL}/cache/mise/cache"     "/srv/${project}_mise-cache/_data"
-fix_mountpoint "${POOL}/cache/mise/installs" "/srv/${project}_mise-installs/_data"
+fix_mountpoint "${POOL}/cache/mise"          "/srv/${project}_mise-cache/_data"
+fix_mountpoint "${POOL}/mise/data-glibc"    "/srv/${project}_mise-glibc/_data"
+fix_mountpoint "${POOL}/mise/data-musl"     "/srv/${project}_mise-musl/_data"
 
 echo ""
 echo "=== Fixing ownership on mountpoints (no-op if already correct) ==="
@@ -85,7 +93,8 @@ chown_mountpoint /srv/${project}_goclaw-workspace/_data
 chown_mountpoint /srv/${project}_goclaw-skills/_data
 chown_mountpoint /srv/${project}_postgres-data/_data
 chown_mountpoint /srv/${project}_mise-cache/_data
-chown_mountpoint /srv/${project}_mise-installs/_data
+chown_mountpoint /srv/${project}_mise-glibc/_data
+chown_mountpoint /srv/${project}_mise-musl/_data
 
 # Ensure parent dirs exist as plain directories (they were auto-created by podman
 # if anonymous volumes were ever instantiated).
@@ -94,7 +103,8 @@ mkdir -p /srv/${project}_goclaw-data \
          /srv/${project}_goclaw-skills \
          /srv/${project}_postgres-data \
          /srv/${project}_mise-cache \
-         /srv/${project}_mise-installs 2>/dev/null || true
+         /srv/${project}_mise-glibc \
+         /srv/${project}_mise-musl 2>/dev/null || true
 
 chown -R "${HOST_UID}:${HOST_GID}" \
     /srv/${project}_goclaw-data \
@@ -102,7 +112,8 @@ chown -R "${HOST_UID}:${HOST_GID}" \
     /srv/${project}_goclaw-skills \
     /srv/${project}_postgres-data \
     /srv/${project}_mise-cache \
-    /srv/${project}_mise-installs 2>/dev/null || true
+    /srv/${project}_mise-glibc \
+    /srv/${project}_mise-musl 2>/dev/null || true
 
 # Surgical permission fix: enforce the setgid bit (g+s) on all directories.
 # Targets only directories (-type d) so we DO NOT clobber restrictive file modes
@@ -116,7 +127,8 @@ ensure_setgid() {
 
 # Apply setgid to the shared cache (group-writable)
 ensure_setgid /srv/${project}_mise-cache
-ensure_setgid /srv/${project}_mise-installs
+ensure_setgid /srv/${project}_mise-glibc
+ensure_setgid /srv/${project}_mise-musl
 
 # Apply setgid to the project data (group-readable, writable by owner)
 ensure_setgid /srv/${project}_goclaw-data
@@ -128,6 +140,7 @@ echo ""
 echo "=== ZFS layout ==="
 zfs list -r "${DATASET}" 2>/dev/null
 zfs list -r "${POOL}/cache/mise" 2>/dev/null
+zfs list -r "${POOL}/mise" 2>/dev/null
 
 echo ""
 echo "Done. If any [WRONG] mountpoints were listed above, run the suggested"

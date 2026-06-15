@@ -1,6 +1,11 @@
 # Podclaws root compose — services defined in use/ directory
 # This file provides the network config.
 
+volumes:
+  mise-musl:
+  mise-glibc:
+  mise-cache:
+
 networks:
   default:
     driver: bridge

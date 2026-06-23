@@ -19,6 +19,7 @@
 SHELL := /bin/bash
 GOCLAW_DIR := $(abspath $(CURDIR)/../../goclaw)
 RELEASES_DIR := $(abspath $(CURDIR)/../../RELEASES/goclaw)
+GOCLAW_USE_BRANCH ?= main
 
 VERSION := $(shell cd $(GOCLAW_DIR) && git describe --tags --abbrev=0 --match "v[0-9]*" 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X github.com/nextlevelbuilder/goclaw/cmd.Version=$(VERSION)
@@ -26,7 +27,7 @@ LDFLAGS := -s -w -X github.com/nextlevelbuilder/goclaw/cmd.Version=$(VERSION)
 GOOS := linux
 GOARCH := $(shell go env GOARCH 2>/dev/null || echo amd64)
 
-.PHONY: build clean image help
+.PHONY: build clean image help checkout-branch sync-upstream
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -35,7 +36,33 @@ help: ## Show this help
 # Build current host architecture
 # --------------------------------------------------------------------
 
-build: $(RELEASES_DIR)/$(VERSION)/goclaw $(RELEASES_DIR)/$(VERSION)/pkg-helper latest-link
+build: ## Build goclaw + pkg-helper binaries
+	$(RELEASES_DIR)/$(VERSION)/goclaw $(RELEASES_DIR)/$(VERSION)/pkg-helper latest-link
+
+checkout-branch:
+	@if [ -n "$$(cd $(GOCLAW_DIR) && git status --porcelain)" ]; then \
+		echo "ERROR: $(GOCLAW_DIR) has uncommitted changes." >&2; \
+		echo "Commit or stash them before building." >&2; \
+		exit 1; \
+	fi
+	@echo "Checking out $(GOCLAW_USE_BRANCH) in $(GOCLAW_DIR)"
+	@cd $(GOCLAW_DIR) && git checkout $(GOCLAW_USE_BRANCH) && git pull --ff-only
+
+# --------------------------------------------------------------------
+# Sync local branch in $(GOCLAW_DIR) with upstream
+# --------------------------------------------------------------------
+
+sync-upstream: ## Fast-forward local branch to upstream/<branch>
+	@if [ -n "$$(cd $(GOCLAW_DIR) && git status --porcelain)" ]; then \
+		echo "ERROR: $(GOCLAW_DIR) has uncommitted changes." >&2; \
+		echo "Commit or stash them before syncing." >&2; \
+		exit 1; \
+	fi
+	@echo "Fetching upstream in $(GOCLAW_DIR)"
+	@cd $(GOCLAW_DIR) && git fetch upstream
+	@echo "Fast-forwarding $(GOCLAW_USE_BRANCH) to upstream/$(GOCLAW_USE_BRANCH)"
+	@cd $(GOCLAW_DIR) && git checkout $(GOCLAW_USE_BRANCH)
+	@cd $(GOCLAW_DIR) && git merge --ff-only upstream/$(GOCLAW_USE_BRANCH)
 
 $(RELEASES_DIR)/$(VERSION)/goclaw:
 	@mkdir -p $(RELEASES_DIR)/$(VERSION)
@@ -75,7 +102,6 @@ clean: ## Remove all versioned releases
 # --------------------------------------------------------------------
 
 image: ## Build image from Dockerfile
-	podman pull alpine:3.23
 	podman build -t localhost/goclaw:current .
 	podman tag localhost/goclaw:current localhost/goclaw:base
 	@echo "Built: localhost/goclaw:current"

@@ -1,0 +1,27 @@
+# Sandbox service for the Alpine goclaw variant.
+# FUTURE WORK — not yet implemented.
+#
+# The goclaw binary launches short-lived sandbox containers for isolated
+# code execution. The sandbox image is built from ./Dockerfile.sandbox
+# and runs as a sibling container in the goclaw-net network.
+#
+# To activate:
+#   1. Create ./Dockerfile.sandbox (Alpine + Python/Node for skill code)
+#   2. Build the image: podman build -f Dockerfile.sandbox -t localhost/goclaw-sandbox:alpine .
+#   3. Enable this overlay in .env's COMPOSE_FILE
+#
+# Usage:
+#   docker compose -f use/goclaw/service.goclaw.yml -f use/goclaw/service.sandbox.yml -f use/goclaw/+self-improve.yml up -d
+
+services:
+  goclaw:
+    environment:
+      # goclaw reads GOCLAW_SANDBOX_MODE and related envs to launch sandboxes
+      - GOCLAW_SANDBOX_MODE=all
+      - GOCLAW_SANDBOX_IMAGE=localhost/goclaw-sandbox:alpine
+      - GOCLAW_SANDBOX_WORKSPACE_ACCESS=rw
+      - GOCLAW_SANDBOX_SCOPE=session
+      - GOCLAW_SANDBOX_MEMORY_MB=512
+      - GOCLAW_SANDBOX_CPUS=1.0
+      - GOCLAW_SANDBOX_TIMEOUT_SEC=300
+      - GOCLAW_SANDBOX_NETWORK=false

@@ -10,6 +10,10 @@
 # Version is derived from the goclaw submodule git tag:
 #   cd ../goclaw && git describe --tags --abbrev=0 --match "v[0-9]*"
 #
+# Build tags are read from GOCLAW_BUILD_TAGS in ../../.env (e.g. to
+# enable the redis cache, set GOCLAW_BUILD_TAGS=embedui,otel,tsnet,redis).
+# Override on the command line: make build GOCLAW_BUILD_TAGS=...
+#
 # Output structure (at RELEASES/goclaw/):
 #   goclaw/
 #     v1.9.0/goclaw        ← binary
@@ -19,10 +23,20 @@
 SHELL := /bin/bash
 GOCLAW_DIR := $(abspath $(CURDIR)/../../goclaw)
 RELEASES_DIR := $(abspath $(CURDIR)/../../RELEASES/goclaw)
+PROJECT_ROOT := $(abspath $(CURDIR)/../..)
 GOCLAW_USE_BRANCH ?= main
+
+# Build tags are read from .env at the project root. To enable optional
+# features (e.g. redis), set GOCLAW_BUILD_TAGS in .env and rebuild.
+# Pass GOCLAW_BUILD_TAGS on the make command line to override.
+ifneq (,$(wildcard $(PROJECT_ROOT)/.env))
+include $(PROJECT_ROOT)/.env
+endif
+export GOCLAW_BUILD_TAGS
 
 VERSION := $(shell cd $(GOCLAW_DIR) && git describe --tags --abbrev=0 --match "v[0-9]*" 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X github.com/nextlevelbuilder/goclaw/cmd.Version=$(VERSION)
+TAGS_FLAG := $(if $(GOCLAW_BUILD_TAGS),-tags $(GOCLAW_BUILD_TAGS),)
 
 GOOS := linux
 GOARCH := $(shell go env GOARCH 2>/dev/null || echo amd64)
@@ -66,9 +80,10 @@ sync-upstream: ## Fast-forward local branch to upstream/<branch>
 $(RELEASES_DIR)/$(VERSION)/goclaw:
 	@mkdir -p $(RELEASES_DIR)/$(VERSION)
 	cd $(GOCLAW_DIR) && CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) \
-		go build -ldflags="$(LDFLAGS)" -o $(RELEASES_DIR)/$(VERSION)/goclaw .
+		go build $(TAGS_FLAG) -ldflags="$(LDFLAGS)" -o $(RELEASES_DIR)/$(VERSION)/goclaw .
 	@cd $(RELEASES_DIR)/$(VERSION) && sha256sum goclaw > goclaw.sha256
 	@echo "  VERSION  $(VERSION)"
+	@echo "  TAGS     $(GOCLAW_BUILD_TAGS)"
 	@echo "  ARCH     $(GOOS)/$(GOARCH)"
 	@echo "  OUTPUT   $(RELEASES_DIR)/$(VERSION)/"
 	@echo "Built: $(RELEASES_DIR)/$(VERSION)/goclaw"
@@ -76,7 +91,7 @@ $(RELEASES_DIR)/$(VERSION)/goclaw:
 $(RELEASES_DIR)/$(VERSION)/pkg-helper:
 	@mkdir -p $(RELEASES_DIR)/$(VERSION)
 	cd $(GOCLAW_DIR) && CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) \
-		go build -ldflags="-s -w" -o $(RELEASES_DIR)/$(VERSION)/pkg-helper ./cmd/pkg-helper
+		go build $(TAGS_FLAG) -ldflags="-s -w" -o $(RELEASES_DIR)/$(VERSION)/pkg-helper ./cmd/pkg-helper
 	@cd $(RELEASES_DIR)/$(VERSION) && sha256sum pkg-helper > pkg-helper.sha256
 	@echo "Built: $(RELEASES_DIR)/$(VERSION)/pkg-helper"
 

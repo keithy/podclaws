@@ -1,0 +1,38 @@
+# Redis service for the goclaw podclaws stack.
+# Adds a Redis cache server that goclaw can connect to, and patches the
+# goclaw service to set GOCLAW_REDIS_DSN and depends_on.
+#
+# Usage:
+#   docker compose -f use/goclaw/service.goclaw.yml \
+#                  -f use/goclaw/service.redis.yml \
+#                  -f use/goclaw/+self-improve.yml up -d
+#
+# The goclaw binary must be built with -tags redis for the redis client
+# to be compiled in. Set GOCLAW_BUILD_TAGS=embedui,otel,tsnet,redis
+# in .env and rebuild with `cd use/goclaw && make build`.
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - default
+      - goclaw-net
+
+  goclaw:
+    environment:
+      - GOCLAW_REDIS_DSN=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis-data:

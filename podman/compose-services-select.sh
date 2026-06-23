@@ -27,11 +27,12 @@ loud() {
 }
 
 # Find all compose yml files under the project root. The deepest legitimate
-# path is <root>/use/<distro>/goclaw/<file>.yml (depth 4). Exclude the goclaw
-# submodule (./goclaw/) and noise dirs (.git/, .github/).
+# path is <root>/use/<distro>/goclaw/<file>.yml (depth 4). Exclude only
+# .git dirs and CI noise (.github/); the goclaw submodule and picoclaw
+# are surfaced so the user can pick from all available fragments.
 find_compose_files() {
   local dir="$1"
-  find "$dir" -maxdepth 4 \( -path "$dir/goclaw" -o -path "$dir/goclaw/*" -o -path "$dir/.git" -o -path "$dir/.git/*" -o -path "*/.github/*" \) -prune -o -name "*.yml" -print 2>/dev/null | sort
+  find "$dir" -maxdepth 4 \( -path "$dir/.git" -o -path "$dir/.git/*" -o -path "*/.github/*" \) -prune -o -name "*.yml" -print 2>/dev/null | sort
 }
 
 # Check if a file is a compose file by content

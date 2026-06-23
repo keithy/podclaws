@@ -4,19 +4,34 @@ set -euo pipefail
 
 SCRIPT="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT}")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/.env"
-ENV_COMPOSE="$SCRIPT_DIR/.env-compose"
+# Project root is the parent of podman/. The script lives at
+# <root>/podman/compose-services-select.sh and scans the project root
+# for compose fragments.
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="$PROJECT_ROOT/.env"
+ENV_COMPOSE="$PROJECT_ROOT/.env-compose"
 EDITOR="${EDITOR:-${VISUAL:-nano}}"
+
+# Detect a "no editor" sentinel (e.g. EDITOR=false in non-interactive shells).
+# In that case --edit should just print the current selection instead of opening
+# an editor that doesn't exist.
+if [[ "$EDITOR" == "false" || "$EDITOR" == ":" || "$EDITOR" == "" ]]; then
+    EDITOR_AVAILABLE=false
+else
+    EDITOR_AVAILABLE=true
+fi
 
 loud() {
   [[ "${QUIET:-false}" != true ]] && echo "$@"
   true
 }
 
-# Find all compose yml files in root dir and options/ subdirectory
+# Find all compose yml files under the project root. The deepest legitimate
+# path is <root>/use/<distro>/goclaw/<file>.yml (depth 4). Exclude the goclaw
+# submodule (./goclaw/) and noise dirs (.git/, .github/).
 find_compose_files() {
   local dir="$1"
-  find "$dir" -maxdepth 3 -name "*.yml" 2>/dev/null | sort
+  find "$dir" -maxdepth 4 \( -path "$dir/goclaw" -o -path "$dir/goclaw/*" -o -path "$dir/.git" -o -path "$dir/.git/*" -o -path "*/.github/*" \) -prune -o -name "*.yml" -print 2>/dev/null | sort
 }
 
 # Check if a file is a compose file by content
@@ -77,7 +92,7 @@ do_generate() {
     [[ -z "$line" ]] && continue
     if is_compose_file "$line"; then
       local cat=$(categorize_compose "$line")
-      local rel="${line#$SCRIPT_DIR/}"
+      local rel="${line#$PROJECT_ROOT/}"
       local enabled="# "
       if [[ -n "$current_compose" && "$current_compose" == *"$rel"* ]]; then
         enabled=""
@@ -88,7 +103,7 @@ do_generate() {
         overlay) overlays="${overlays}${overlays:+$'\n'}${enabled}${rel}" ;;
       esac
     fi
-  done < <(find_compose_files "$SCRIPT_DIR")
+  done < <(find_compose_files "$PROJECT_ROOT")
 
   if [[ -n "$roots" ]]; then
     echo "# === ROOT (required) ==="
@@ -171,6 +186,15 @@ do_edit() {
     do_generate "$current" > "$ENV_COMPOSE"
   fi
 
+  # If EDITOR is set to a no-op sentinel (e.g. "false" in non-interactive
+  # shells, or empty), skip the editor and just apply the current selection.
+  if [[ "$EDITOR_AVAILABLE" == false ]]; then
+    loud "No editor available (EDITOR='$EDITOR'). Using current selection."
+    do_update
+    do_check
+    return
+  fi
+
   if ! "$EDITOR" "$ENV_COMPOSE"; then
     loud "Editor failed (EDITOR=$EDITOR)"
     exit 1
@@ -241,7 +265,7 @@ for arg in "$@"; do
   fi
 done
 
-cd "$SCRIPT_DIR" >/dev/null 2>&1
+cd "$PROJECT_ROOT" >/dev/null 2>&1
 
 # No args = help (unless FILE was set, which auto-sets UPDATE/CHECK)
 if [[ "$GENERATE" == false && "$UPDATE" == false && "$EDIT" == false && "$CHECK" == false ]]; then

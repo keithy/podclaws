@@ -96,6 +96,46 @@ chown_mountpoint /srv/${project}_mise-cache/_data
 chown_mountpoint /srv/${project}_mise-glibc/_data
 chown_mountpoint /srv/${project}_mise-musl/_data
 
+# Register podman volumes so 'podman compose up' finds them pre-existing.
+# Podman auto-creates anonymous volumes on first use, but it needs to chown
+# the parent dir to 0:0. If we (the host user) don't own the parent dir,
+# podman fails with "operation not permitted".
+#
+# The fix: chown the parent dir to the host user before creating the volume.
+# We leave the parent dir owned by the host user afterwards - podman doesn't
+# require it to be root-owned, and the existing goclaw-data etc. volumes
+# only have root:root parents because they were created by root.
+echo ""
+echo "=== Registering podman volumes (one-time, requires sudo) ==="
+register_volume() {
+    local volname="$1"
+    local parent_dir="/srv/${volname}"
+    if podman volume exists "$volname" 2>/dev/null; then
+        echo "  [exists] $volname"
+        return
+    fi
+    if [ ! -d "$parent_dir" ]; then
+        echo "  [skip] $volname - parent dir $parent_dir does not exist (ZFS not set up?)"
+        return
+    fi
+    echo "  [creating] $volname"
+    sudo chown "${HOST_UID}:${HOST_GID}" "$parent_dir"
+    if podman volume create "$volname" >/dev/null 2>&1; then
+        echo "          created (parent dir now owned by ${HOST_UID}:${HOST_GID})"
+    else
+        echo "          FAILED to create"
+        # Restore root:root so we don't leave a half-chowned dir
+        sudo chown root:root "$parent_dir"
+    fi
+}
+register_volume "${project}_goclaw-data"
+register_volume "${project}_goclaw-workspace"
+register_volume "${project}_goclaw-skills"
+register_volume "${project}_postgres-data"
+register_volume "${project}_mise-cache"
+register_volume "${project}_mise-glibc"
+register_volume "${project}_mise-musl"
+
 # Ensure parent dirs exist as plain directories (they were auto-created by podman
 # if anonymous volumes were ever instantiated).
 mkdir -p /srv/${project}_goclaw-data \

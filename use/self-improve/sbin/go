@@ -1,8 +1,10 @@
 #!/bin/sh
-# Lazy shim for go using mise
+# Lazy shim for go
+#
+# --version / -V / -v: defers to add-go --version.
+# anything else: execs real go if on PATH; else runs add-go.
 
-echo "[Shim] go requested. Bootstrapping globally..." >&2
-
-mise use -g go@latest
-
-exec mise exec -- go "$@"
+. "$(dirname "$0")/lib/shim-common.sh"
+TOOL=go
+ADD=add-go
+shim_main "$@"

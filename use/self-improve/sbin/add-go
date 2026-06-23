@@ -1,0 +1,20 @@
+#!/bin/sh
+# add-go: install Go from the Alpine package repo
+# Usage: add-go [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apk (Alpine package repo).
+# Installs: go 1.25.10
+set -e
+
+if [ "${1:-}" = "--version" ]; then
+    ver=$(apk policy go 2>/dev/null | awk '/^[[:space:]]+[0-9]/ {print $1; exit}' | sed 's/-r.*//')
+    if [ -z "$ver" ]; then
+        echo "go (version unknown — apk index empty, run 'sudo apk update' to refresh)"
+        exit 0
+    fi
+    echo "go $ver (install via add-go)"
+    exit 0
+fi
+
+sudo apk add --no-cache go

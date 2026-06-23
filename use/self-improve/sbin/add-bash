@@ -1,5 +1,20 @@
 #!/bin/sh
 # add-bash: install bash shell
+# Usage: add-bash [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apk (Alpine package repo).
+# Installs: bash 5.3.3
 set -e
+
+if [ "${1:-}" = "--version" ]; then
+    ver=$(apk policy bash 2>/dev/null | awk '/^[[:space:]]+[0-9]/ {print $1; exit}' | sed 's/-r.*//')
+    if [ -z "$ver" ]; then
+        echo "bash (version unknown — apk index empty, run 'sudo apk update' to refresh)"
+        exit 0
+    fi
+    echo "bash $ver (install via add-bash)"
+    exit 0
+fi
 
 sudo apk add --no-cache bash

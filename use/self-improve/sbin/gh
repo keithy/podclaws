@@ -1,8 +1,10 @@
 #!/bin/sh
-# Lazy shim for gh using mise
+# Lazy shim for gh (GitHub CLI)
+#
+# --version / -V / -v: defers to add-gh --version.
+# anything else: execs real gh if on PATH; else runs add-gh.
 
-echo "[Shim] gh requested. Bootstrapping globally..." >&2
-
-mise use -g gh@latest
-
-exec mise exec -- gh "$@"
+. "$(dirname "$0")/lib/shim-common.sh"
+TOOL=gh
+ADD=add-gh
+shim_main "$@"

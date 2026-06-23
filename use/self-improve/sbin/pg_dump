@@ -1,0 +1,11 @@
+#!/bin/sh
+# Lazy shim for pg_dump
+#
+# --version / -V / -v: defers to add-pg-client --version.
+# anything else: execs real pg_dump if on PATH; else runs add-pg-client
+# (which installs the postgresql client tools, including pg_dump).
+
+. "$(dirname "$0")/lib/shim-common.sh"
+TOOL=pg_dump
+ADD=add-pg-client
+shim_main "$@"

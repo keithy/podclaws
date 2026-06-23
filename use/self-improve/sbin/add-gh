@@ -1,14 +1,33 @@
 #!/bin/sh
 # add-gh: install GitHub CLI
+# Usage: add-gh [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apk (Alpine community repo). The package is named `github-cli`,
+# not `gh`. Version 2.83.0 is the newest in alpine 3.23 community.
+#
+# To get a newer version, switch to the curl-from-upstream approach
+# (commented out below).
+#
+# Installs: github-cli 2.83.0 (provides `gh` binary)
 set -e
 
-GH_VERSION=2.93.0
-ARCH=$(uname -m)
-[ "$ARCH" = "x86_64" ] && GH_ARCH="amd64"
-[ "$ARCH" = "aarch64" ] && GH_ARCH="arm64"
+if [ "${1:-}" = "--version" ]; then
+    echo "gh 2.83.0 (github-cli 2.83.0 in apk) (install via add-gh)"
+    exit 0
+fi
 
-sudo apk add --no-cache curl git
-curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${GH_ARCH}.tar.gz" |
-    sudo tar -xz -C /usr/local/bin
+sudo apk add --no-cache github-cli
 
-sudo ln -sf /usr/local/bin/gh_${GH_VERSION}_linux_${GH_ARCH}/bin/gh /usr/local/bin/gh
+# Alternative: pin to a specific GitHub release (newer, but heavier install):
+# GH_VERSION=2.93.0
+# ARCH=$(uname -m)
+# [ "$ARCH" = "x86_64" ] && GH_ARCH="amd64"
+# [ "$ARCH" = "aarch64" ] && GH_ARCH="arm64"
+#
+# sudo apk add --no-cache curl git
+# curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${GH_ARCH}.tar.gz" |
+#     sudo tar -xz -C /usr/local/bin
+#
+# sudo ln -sf /usr/local/bin/gh_${GH_VERSION}_linux_${GH_ARCH}/bin/gh /usr/local/bin/gh
+

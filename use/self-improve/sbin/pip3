@@ -1,8 +1,10 @@
 #!/bin/sh
-# Lazy shim for pip using mise (pip is bundled with python)
+# Lazy shim for pip3 (bundled with python)
+#
+# --version / -V / -v: defers to add-python --version.
+# anything else: execs real pip3 if on PATH; else runs add-python.
 
-echo "[Shim] pip requested. Bootstrapping mise and installing python globally..." >&2
-
-mise use -g python@latest
-
-exec mise exec -- pip "$@"
+. "$(dirname "$0")/lib/shim-common.sh"
+TOOL=pip3
+ADD=add-python
+shim_main "$@"

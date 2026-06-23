@@ -1,9 +1,27 @@
 #!/bin/sh
 # add-python: install Python runtime
 # Usage: add-python [base|full]
-#   base  - python3 + pip + edge-tts (for basic Python skills)
+#   base  - python3 + pip (default; what the shim uses)
 #   full  - all Python skill deps (pandas, pypdf, openpyxl, etc.)
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apk (Alpine package repo).
+# Installs: python 3.12.13, pip 25.1.1
 set -e
+
+if [ "${1:-}" = "--version" ]; then
+    # apk policy prints the header "<pkg> policy:" then the version on
+    # the next line, indented. Grab the first indented non-empty line.
+    py_ver=$(apk policy python3 2>/dev/null | awk '/^[[:space:]]+[0-9]/ {print $1; exit}' | sed 's/-r.*//')
+    pip_ver=$(apk policy py3-pip 2>/dev/null | awk '/^[[:space:]]+[0-9]/ {print $1; exit}' | sed 's/-r.*//')
+    if [ -z "$py_ver" ]; then
+        echo "python (version unknown — apk index empty, run 'sudo apk update' to refresh)"
+        exit 0
+    fi
+    [ -n "$pip_ver" ] && pip_ver="pip $pip_ver"
+    echo "python $py_ver, ${pip_ver:-pip (unknown)} (install via add-python)"
+    exit 0
+fi
 
 MODE="${1:-base}"
 
@@ -25,7 +43,7 @@ case "${MODE}" in
             "defusedxml~=0.7.1" \
             "lxml~=6.0.2" \
             "anthropic>=0.88.0,<2.0.0"; do
-            
+
             pip3 install --no-cache-dir --break-system-packages "$pkg"
         done
         ;;

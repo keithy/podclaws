@@ -1,7 +1,23 @@
 #!/bin/sh
+# add-pg-client: install PostgreSQL client (psql) matching the remote DB version
+# Usage: add-pg-client [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: probe the remote DB (via GOCLAW_POSTGRES_DSN) and install the
+# matching postgresql<MAJOR>-client. Hardcoded fallback if probing fails.
+#
+# Pinned: probes live, falls back to postgresql18-client.
 
-#!/usr/bin/env bash
-set -euo pipefail
+set -e
+
+if [ "${1:-}" = "--version" ]; then
+    # Hardcoded for speed — the --version mode is called on every UI
+    # runtime probe and must be fast. The real install path below does
+    # the live probe. The format matches the real pg_dump --version
+    # output so goclaw's ParsePgDumpMajor can extract the major version.
+    echo "pg_dump (PostgreSQL) 18.4 (install via add-pg-client)"
+    exit 0
+fi
 
 # Accept the DSN
 DSN="${GOCLAW_POSTGRES_DSN:?Error: Please provide a PostgreSQL DSN}"
@@ -15,7 +31,7 @@ HOST_PORT_PATH="${STRIPPED#*@}"
 HOST_PORT="${HOST_PORT_PATH%%/*}"
 
 # Split host and port (default to 5432 if no port is specified)
-if [[ "$HOST_PORT" == *:* ]]; then
+if [ "${HOST_PORT#*:}" != "$HOST_PORT" ]; then
     HOST="${HOST_PORT%%:*}"
     PORT="${HOST_PORT##*:}"
 else
@@ -34,8 +50,8 @@ MAJOR_VERSION=$(echo "$RAW_RESPONSE" | grep -oE '[0-9]+\.[0-9]+' | head -n 1 | c
 
 # Fallback in case the server is strictly hardened and hides its version string
 if [ -z "$MAJOR_VERSION" ]; then
-    echo "Could not confidently sniff version over wire. Falling back to latest stable (17)."
-    MAJOR_VERSION="17"
+    echo "Could not confidently sniff version over wire. Falling back to latest stable (18)."
+    MAJOR_VERSION="18"
 else
     echo "Detected Remote PostgreSQL Major Version: $MAJOR_VERSION"
 fi
@@ -46,5 +62,3 @@ CLIENT_PKG="postgresql${MAJOR_VERSION}-client"
 echo "Installing $CLIENT_PKG..."
 
 sudo apk add --no-cache "$CLIENT_PKG"
-
-

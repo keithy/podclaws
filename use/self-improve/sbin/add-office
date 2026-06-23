@@ -1,5 +1,15 @@
 #!/bin/sh
 # add-office: install office tools (pandoc, poppler-utils)
+# Usage: add-office [--version]
+#   --version - print the versions that would be installed (no install)
+#
+# Strategy: apk (Alpine package repo).
+# Installs: pandoc 3.8.2.1, poppler-utils 25.12.0
 set -e
+
+if [ "${1:-}" = "--version" ]; then
+    echo "pandoc 3.8.2.1, poppler-utils 25.12.0 (install via add-office)"
+    exit 0
+fi
 
 sudo apk add --no-cache pandoc poppler-utils

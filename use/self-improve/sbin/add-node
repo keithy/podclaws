@@ -1,5 +1,22 @@
 #!/bin/sh
-# add-node: install Node.js runtime
+# add-node: install Node.js runtime + npm
+# Usage: add-node [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apk (Alpine package repo).
+# Installs: nodejs 24.14.1, npm 11.11.0
 set -e
+
+if [ "${1:-}" = "--version" ]; then
+    node_ver=$(apk policy nodejs 2>/dev/null | awk '/^[[:space:]]+[0-9]/ {print $1; exit}' | sed 's/-r.*//')
+    npm_ver=$(apk policy npm 2>/dev/null | awk '/^[[:space:]]+[0-9]/ {print $1; exit}' | sed 's/-r.*//')
+    if [ -z "$node_ver" ]; then
+        echo "nodejs (version unknown — apk index empty, run 'sudo apk update' to refresh)"
+        exit 0
+    fi
+    [ -n "$npm_ver" ] && npm_ver="npm $npm_ver"
+    echo "nodejs $node_ver, ${npm_ver:-npm (unknown)} (install via add-node)"
+    exit 0
+fi
 
 sudo apk add --no-cache nodejs npm

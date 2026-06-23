@@ -1,0 +1,20 @@
+#!/bin/sh
+# add-git: install git
+# Usage: add-git [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apk (Alpine package repo).
+# Installs: git 2.52.0
+set -e
+
+if [ "${1:-}" = "--version" ]; then
+    ver=$(apk policy git 2>/dev/null | awk '/^[[:space:]]+[0-9]/ {print $1; exit}' | sed 's/-r.*//')
+    if [ -z "$ver" ]; then
+        echo "git (version unknown — apk index empty, run 'sudo apk update' to refresh)"
+        exit 0
+    fi
+    echo "git $ver (install via add-git)"
+    exit 0
+fi
+
+sudo apk add --no-cache git

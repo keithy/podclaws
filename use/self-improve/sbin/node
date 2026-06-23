@@ -1,8 +1,10 @@
 #!/bin/sh
-# Lazy shim for node using mise
+# Lazy shim for node
+#
+# --version / -V / -v: defers to add-node --version.
+# anything else: execs real node if on PATH; else runs add-node.
 
-echo "[Shim] node requested. Bootstrapping mise and installing globally..." >&2
-
-mise use -g node@latest
-
-exec mise exec -- node "$@"
+. "$(dirname "$0")/lib/shim-common.sh"
+TOOL=node
+ADD=add-node
+shim_main "$@"

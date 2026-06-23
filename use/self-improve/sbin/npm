@@ -1,8 +1,10 @@
 #!/bin/sh
-# Lazy shim for npm using mise (npm is bundled with node)
+# Lazy shim for npm (bundled with node)
+#
+# --version / -V / -v: defers to add-node --version.
+# anything else: execs real npm if on PATH; else runs add-node.
 
-echo "[Shim] npm requested. Bootstrapping mise and installing node globally..." >&2
-
-mise use -g node@latest
-
-exec mise exec -- npm "$@"
+. "$(dirname "$0")/lib/shim-common.sh"
+TOOL=npm
+ADD=add-node
+shim_main "$@"

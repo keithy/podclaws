@@ -1,5 +1,20 @@
 #!/bin/sh
 # add-execline: install execline (minimalist shell)
+# Usage: add-execline [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apk (Alpine package repo).
+# Installs: execline 2.9.7.0
 set -e
+
+if [ "${1:-}" = "--version" ]; then
+    ver=$(apk policy execline 2>/dev/null | awk '/^[[:space:]]+[0-9]/ {print $1; exit}' | sed 's/-r.*//')
+    if [ -z "$ver" ]; then
+        echo "execline (version unknown — apk index empty, run 'sudo apk update' to refresh)"
+        exit 0
+    fi
+    echo "execline $ver (install via add-execline)"
+    exit 0
+fi
 
 sudo apk add --no-cache execline

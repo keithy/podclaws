@@ -1,10 +1,10 @@
 #!/bin/sh
-# Lazy shim for pipx using mise
+# Lazy shim for pipx
+#
+# --version / -V / -v: defers to add-python --version.
+# anything else: execs real pipx if on PATH; else runs add-python.
 
-echo "[Shim] pipx requested. Bootstrapping mise and installing globally..." >&2
-
-# We might need python globally as well to run pipx properly
-mise use -g python@latest
-mise use -g pipx@latest
-
-exec mise exec -- pipx "$@"
+. "$(dirname "$0")/lib/shim-common.sh"
+TOOL=pipx
+ADD=add-python
+shim_main "$@"

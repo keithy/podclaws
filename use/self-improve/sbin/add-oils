@@ -1,6 +1,16 @@
 #!/bin/sh
 # add-oils: install Oil shell
+# Usage: add-oils [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: build from source. Requires build-base, g++, etc.
+# Version pinned: oils-for-unix-0.37.0
 set -e
+
+if [ "${1:-}" = "--version" ]; then
+    echo "oils-for-unix 0.37.0 (build from source, takes 1-2 minutes) (install via add-oils)"
+    exit 0
+fi
 
 # 1. Install build dependencies
 sudo apk add --no-cache --virtual build-deps build-base curl
@@ -24,7 +34,7 @@ sudo chown -R $(id -u):$(id -g) /usr/local/lib/oils_src
 _build/oils.sh
 
 # Running the tests is optional but recommended on musl-based Alpine
-./test/unit.sh 
+./test/unit.sh
 
 sudo ./install
 

@@ -1,10 +1,10 @@
 #!/bin/sh
-# Lazy shim for python using mise
-# This intercepts the first call to `python`, installs mise and python globally,
-# and generates the mise shims. Subsequent calls will hit the mise shim instead.
+# Lazy shim for python3
+#
+# --version / -V / -v: defers to add-python --version.
+# anything else: execs real python3 if on PATH; else runs add-python.
 
-echo "[Shim] python requested. Bootstrapping mise and installing globally..." >&2
-
-mise use -g python@latest
-
-exec mise exec -- python "$@"
+. "$(dirname "$0")/lib/shim-common.sh"
+TOOL=python3
+ADD=add-python
+shim_main "$@"

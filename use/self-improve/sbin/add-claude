@@ -1,6 +1,17 @@
 #!/bin/sh
 # add-claude: install Claude CLI
+# Usage: add-claude [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apk for nodejs/npm, then npm install -g for the Claude CLI
+# (not in any Alpine package repo).
+# Installs: nodejs 24.14.1, npm 11.11.0, @anthropic-ai/claude-code ^2.1.91
 set -e
+
+if [ "${1:-}" = "--version" ]; then
+    echo "@anthropic-ai/claude-code ^2.1.91 (install via add-claude)"
+    exit 0
+fi
 
 sudo apk add --no-cache nodejs npm
 npm install -g @anthropic-ai/claude-code@^2.1.91

@@ -18,12 +18,7 @@ pkg-helper
 .env*
 !*.example
 
-app
-browser-poc
-openclaw-go
-/config.json
-prompt.md
-*.bk.*
+/app
 
 # UI Web (React SPA)
 goclaw/ui/web/node_modules/
@@ -88,6 +83,9 @@ ui/web/nginx.staging.conf
 
 # Versioned release binaries
 RELEASES/
+
+# Stray export tarballs
+goclaw-export-*.tar.gz
 
 # AI memory
 .crush/

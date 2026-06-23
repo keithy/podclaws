@@ -1,0 +1,114 @@
+# Skeleton compose file for the Debian bookworm-slim goclaw variant.
+# Mirrors use/goclaw/service.goclaw.yml but builds from the Debian
+# image in this directory. Service name 'goclaw' matches the Alpine
+# variant — only one should be enabled at a time via services:select.
+#
+# Use with overlay:
+#   docker compose -f use_debian/goclaw/service.goclaw.yml -f use_debian/goclaw/+self-improve.yml up -d
+#
+# Build the image first:
+#   podman build -t localhost/goclaw-debian:current use_debian/goclaw/
+
+services:
+  goclaw:
+    image: localhost/goclaw-debian:current
+
+    command: ["/bin/goclaw"]
+
+    ports:
+      - "${GOCLAW_PORT:-18790}:18790"
+
+    env_file:
+      - path: .env
+        required: false
+
+    environment:
+      - HOME=/app
+      - GOCLAW_DATA_DIR=/app/data
+      - GOCLAW_CONFIG=/app/data/config.json
+      - GOCLAW_WORKSPACE=/app/workspace
+      - GOCLAW_GATEWAY_TOKEN=${GOCLAW_GATEWAY_TOKEN:?run ./prepare-env.sh or set GOCLAW_GATEWAY_TOKEN}
+      - GOCLAW_ENCRYPTION_KEY=${GOCLAW_ENCRYPTION_KEY:-}
+      - GOCLAW_TRACE_VERBOSE=${GOCLAW_TRACE_VERBOSE:-0}
+      - GOCLAW_HOST=${GOCLAW_HOST:-0.0.0.0}
+      - GOCLAW_PORT=${GOCLAW_PORT:-18790}
+
+      - MISE_DATA_DIR=/usr/share/mise
+      - MISE_SHIMS_DIR=/app/.local/share/mise/shims
+
+      - PIP_BREAK_SYSTEM_PACKAGES=1
+      # PATH order (matters for the lazy shim layer):
+      #   1. mise shims         — tools managed by mise (when installed)
+      #   2. ~/.local/bin       — per-user installed tools
+      #   3. .runtime/bin       — goclaw runtime scripts (volume-mounted)
+      #   4. /usr/local/bin     — site-local binaries (manual installs)
+      #   5. /usr/sbin          — Debian system admin tools
+      #   6. /usr/bin           — distro packages (real pg_dump, python3, etc.)
+      #   7. /sbin              — legacy system tools
+      #   8. /bin               — coreutils
+      #   9. /usr/local/sbin    — LAZY SHIMS LAST (fallback only)
+      # The shims at /usr/local/sbin (python, python3, pip, pip3, pipx, node,
+      # npm, go, gh, mise, pg_dump) only fire when the real binary is missing
+      # on /usr/bin. Putting them last means goclaw's exec.Command("pg_dump",
+      # ...) hits /usr/bin/pg_dump directly and gets the real version string.
+      - PATH=/app/.local/share/mise/shims:/app/.local/bin:/app/data/.runtime/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/sbin
+
+    volumes:
+      - ${PODCLAWS_RELEASES:-./RELEASES}/goclaw/${GOCLAW_DEPLOY_VERSION}/goclaw:/bin/goclaw:ro
+      - ${PODCLAWS_RELEASES:-./RELEASES}/goclaw/${GOCLAW_DEPLOY_VERSION}/pkg-helper:/bin/pkg-helper:ro
+      - ${GOCLAW_DIR}/skills:/app/bundled-skills:ro
+      # Bind-mount the host's CA bundle so the container picks up CA
+      # updates without rebuilding the image. The host path is the
+      # standard Alpine location; override PODCLAWS_CA_BUNDLE if your
+      # host uses a different layout (e.g. /etc/pki/tls/certs/... on RHEL).
+      - ${PODCLAWS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}:/etc/ssl/certs/ca-certificates.crt:ro
+      - goclaw-data:/app/data
+      - goclaw-workspace:/app/workspace
+      - mise-musl:/usr/share/mise
+      - mise-cache:/app/.cache/mise
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # Workaround: goclaw (Go binary) does not reap child processes when running
+    # as PID 1, causing zombies to accumulate until the cgroup pids.max cap is
+    # hit. Podman/Docker's `init: true` wraps the command with tini which reaps.
+    # Remove once goclaw installs a SIGCHLD handler internally.
+    init: true
+
+    cap_drop:
+      - ALL
+
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
+          pids: 200
+
+    networks:
+      - default
+      - goclaw-net
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:${GOCLAW_PORT:-18790}/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  goclaw-data:
+  goclaw-workspace:
+  mise-musl:
+  mise-cache:

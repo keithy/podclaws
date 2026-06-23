@@ -5,8 +5,8 @@
 
 . "$(dirname "$0")/lib/bash-spec.sh"
 
-PODMAN_ON_HOST="$(cd "$(dirname "$0")/../sbin" && pwd)/podman_on_host.sh"
-SENSIBLE_ON_HOST_DO="$(cd "$(dirname "$0")/../sbin" && pwd)/sensible_on_host_do.sh"
+PODMAN_ON_HOST="$(cd "$(dirname "$0")/../shared-sbin" && pwd)/podman_on_host.sh"
+SENSIBLE_ON_HOST_DO="$(cd "$(dirname "$0")/../shared-sbin" && pwd)/sensible_on_host_do.sh"
 TEST_TASKS_DIR="/tmp/test-podman-$$"
 TASKS_PENDING="$TEST_TASKS_DIR/pending"
 

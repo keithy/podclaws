@@ -1,15 +1,17 @@
-# Skeleton compose file with goclaw service definition.
-# Use with overlay:
-#   docker compose -f use/goclaw/service.goclaw.yml -f use/goclaw/+self-improve.yml up -d
+# Skeleton compose file for the Debian bookworm-slim goclaw variant.
+# Mirrors use/goclaw/service.goclaw.yml but builds from the Debian
+# image in this directory. Service name 'goclaw' matches the Alpine
+# variant — only one should be enabled at a time via services:select.
 #
-# Variables (from .env):
-#   GOCLAW_DEPLOY_VERSION   e.g. arm64/latest, amd64/v1.9.0  (default: arm64/latest)
-#   GOCLAW_PORT             Web UI port (default: 18790)
-#   GOCLAW_RELEASES         Path to releases dir (default: ../RELEASES/goclaw)
+# Use with overlay:
+#   docker compose -f use_debian/goclaw/service.goclaw.yml -f use_debian/goclaw/+self-improve.yml up -d
+#
+# Build the image first:
+#   podman build -t localhost/goclaw-debian:current use_debian/goclaw/
 
 services:
   goclaw:
-    image: localhost/goclaw:current
+    image: localhost/goclaw-debian:current
 
     command: ["/bin/goclaw"]
 
@@ -31,16 +33,15 @@ services:
       - GOCLAW_HOST=${GOCLAW_HOST:-0.0.0.0}
       - GOCLAW_PORT=${GOCLAW_PORT:-18790}
 
-      # Runtime paths for package installs (normally set by docker-entrypoint.sh)
       - PIP_BREAK_SYSTEM_PACKAGES=1
       # PATH order (matters for the lazy shim layer):
       #   1. ~/.local/bin       — per-user installed tools
       #   2. .runtime/bin       — goclaw runtime scripts (volume-mounted)
       #   3. /usr/local/bin     — site-local binaries (manual installs)
-      #   4. /usr/sbin          — Alpine system admin tools
+      #   4. /usr/sbin          — Debian system admin tools
       #   5. /usr/bin           — distro packages (real pg_dump, python3, etc.)
       #   6. /sbin              — legacy system tools
-      #   7. /bin               — BusyBox applets and coreutils
+      #   7. /bin               — coreutils
       #   8. /usr/local/sbin    — LAZY SHIMS LAST (fallback only)
       # The shims at /usr/local/sbin (python, python3, pip, pip3, pipx, node,
       # npm, go, gh, mise, pg_dump) only fire when the real binary is missing
@@ -48,7 +49,7 @@ services:
       # ...) hits /usr/bin/pg_dump directly and gets the real version string.
       #
       # For mise-based installs, +mise-improve.yml prepends
-      # /app/.local/share/mise/shims and /usr/share/mise/bin to PATH.
+      # /app/.local/share/mise/shims to PATH.
       - PATH=/app/.local/bin:/app/data/.runtime/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/sbin
 
     volumes:
@@ -67,14 +68,6 @@ services:
 
     extra_hosts:
       - "host.docker.internal:host-gateway"
-
-# This is the option that enables/disables sudo
-# and full self-improvement i.e. apk installs
-#    security_opt:
-#      - no-new-privileges:true
-
-    # default setting
-    # init: false
 
     # Workaround: goclaw (Go binary) does not reap child processes when running
     # as PID 1, causing zombies to accumulate until the cgroup pids.max cap is
@@ -99,7 +92,7 @@ services:
           memory: 1G
           cpus: '2.0'
           pids: 200
-          
+
     networks:
       - default
       - goclaw-net

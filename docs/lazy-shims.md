@@ -1,6 +1,12 @@
 # Lazy Shims and the Install Path
 
-The `use/self-improve/sbin/` directory contains:
+The self-improve tree is split into two layers:
+
+- **Shims** (`use/self-improve/shared-sbin/`): distro-agnostic. The 13 lazy shims (`python`, `python3`, `pip`, `pip3`, `pipx`, `node`, `npm`, `go`, `gh`, `mise`, `pg_dump`, `claude`, `psql`) plus two sidecar scripts (`podman_on_host.sh`, `sensible_on_host_do.sh`) and `lib/shim-common.sh`. One source of truth, shared by every variant.
+- **Installers**: per-strategy. Each overlay picks one. Pick exactly one — the bind-mount to `/usr/local/bin/` is shadowed (last-wins) if you stack.
+  - `use/alpine/installers/` — apk-based, used by the default Alpine variant.
+  - `use/debian/installers/` — apt-based, used by the Debian variant.
+  - `use/self-improve/mise-installers/` — mise for languages, OS package manager as fallback for system tools. Works on both Alpine and Debian.
 
 - **Lazy shims** (`python`, `python3`, `pip`, `pip3`, `pipx`, `node`, `npm`, `go`, `gh`, `mise`, `pg_dump`): proxy binaries that make goclaw's hardcoded "install dependencies" action work. They are **stubs** that fall back to a real tool if one is on PATH, or to an `add-*` script if not.
 - **`add-*` scripts** (`add-bash`, `add-node`, `add-python`, `add-gh`, `add-pg-client`, `add-office`, `add-oils`, `add-execline`, `add-claude`, `add-go`, `add-git`, `add-mise`): install the real tool. Each encodes its own **strategy** (apk, curl from upstream, etc.) and the **pinned version** in a header comment.
@@ -73,12 +79,65 @@ The version of each tool is **pinned in a comment in its `add-*` script**. To up
 | gh     | 2.83.0   | apk (github-cli)  | `add-gh`      |
 | bash   | 5.3.3    | apk            | `add-bash`    |
 | git    | 2.52.0   | apk            | `add-git`     |
-| mise   | 2025.8.20 | RELEASES_MUSL/mise/ (staged) | `add-mise` |
+| mise   | 2025.8.20 | `mise-musl` volume at `/usr/share/mise/RELEASES/mise/2025.8.20/aarch64/mise` (staged) | `add-mise` |
 | curl   | 8.19.0   | apk (image-baked) | n/a        |
 | pandoc | 3.8.2.1  | apk            | `add-office`  |
 | poppler-utils | 25.12.0 | apk     | `add-office`  |
 | execline | 2.9.7.0 | apk           | `add-execline` |
 | pg_dump | 18.4    | apk (postgresql18-client) | `add-pg-client` |
+
+## State saving: podman interface vs on-disk cache
+
+Both `+self-improve.yml` (native) and `+mise-improve.yml` (mise) follow the
+**podman-interface-first** model: the container's read-write layer is the
+authoritative state, and you persist it by `podman commit`-ing the container
+to a new image. The two overlays differ in how much **on-disk caching** they
+add on top of that.
+
+### Native (`+self-improve.yml`): podman commit only
+
+- `add-*` scripts call `apk add` (Alpine) or `apt-get install` (Debian).
+- Packages land in the image's read-write layer at `/usr/bin`, `/usr/lib`, etc.
+- **No on-disk cache.** After `podman compose down` (which drops the container
+  and its layer), the next `up` starts fresh. The first call to a shim
+  re-runs `add-*`, which re-installs via apk/apt. Fast enough — apk/apt
+  indexes are small, network is local.
+- To persist, commit the running container: `podman commit <ctr> localhost/goclaw:current-improved`,
+  then update the service's `image:` line.
+
+### Mise (`+mise-improve.yml`): podman commit + on-disk cache
+
+The mise overlay adds **two named volumes** that persist installs across
+container lifecycles, independent of `podman commit`:
+
+| Volume       | Mounted at                       | Contents                                        |
+| ------------ | -------------------------------- | ----------------------------------------------- |
+| `mise-musl`  | `/usr/share/mise`                | Prebuilt mise binary, lua 5.1 lib, language installs (`installs/python/3.12.13/...`, `installs/node/24.14.1/...`, etc.) |
+| `mise-cache` | `/app/.cache/mise`               | Downloaded tarballs, wheels, source tarballs    |
+
+These volumes **survive `podman compose down` and `podman rm`**. So the
+second container that needs `python@3.12.13` finds it already extracted in
+`mise-musl` and skips the download/extract step. Tarball-level dedup via
+`mise-cache` (e.g. node's `node-v24.14.1-...tar.gz` is shared across all
+tool installs that depend on it).
+
+For state that lives in the **read-write layer** (e.g. `add-bash` calling
+`apk add bash`, which lands in `/bin/bash`), the same `podman commit`
+mechanism as the native overlay applies. The volumes only cache what
+mise itself manages; apk/apt installs still go through commit.
+
+### Decision guide
+
+| Need | Use |
+| ---- | --- |
+| Quick dev cycle, packages from apk/apt, happy to re-install on container recreate | `+self-improve.yml` (native) |
+| Specific tool versions not in apk/apt (e.g. Python 3.12.13 on Debian bookworm, which ships 3.11) | `+mise-improve.yml` (mise) |
+| Multiple language versions side-by-side, persistent cache across team | `+mise-improve.yml` (mise) |
+| Minimal image size (no mise binary, no build-deps layer) | `+self-improve.yml` (native) |
+
+The two overlays are **mutually exclusive** — pick one. Combining them
+shadows the `/usr/local/bin` bind-mount (last-wins in compose), which is
+undefined behaviour depending on file order.
 
 ## Test path
 

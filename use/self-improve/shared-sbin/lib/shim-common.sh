@@ -16,7 +16,7 @@
 #                          of truth for versions.
 #   anything else        →
 #     1. if $TOOL is on PATH and not the shim itself → exec it
-#     2. else if $ADD exists and is executable → run it, then re-check
+#     2. else if $ADD exists at /usr/local/bin/ → run it, then re-check
 #     3. else → print a generic not-installed message, exit 127
 #
 # Each add-* script encodes its own strategy (currently apk; can be
@@ -30,17 +30,22 @@ shim_main() {
     fi
     ADD="${ADD:-add-$TOOL}"
     SELF_DIR="${SELF_DIR:-$(dirname "$0")}"
+    # add-* scripts are bind-mounted at /usr/local/bin/ by +self-improve.yml.
+    # That dir is already in PATH at position 4, so we could call $ADD
+    # directly — but using an explicit path keeps --version output
+    # consistent regardless of which PATH the shim is invoked under.
+    ADD_PATH="/usr/local/bin/$ADD"
 
     # 1. Version probe: defer to add-* --version. The add-* script
     #    returns the version it WOULD install (no actual install).
     #    This keeps version info in one place.
     case "$1" in
         --version|-V|-v)
-            if [ -x "$SELF_DIR/$ADD" ]; then
-                "$SELF_DIR/$ADD" --version
+            if [ -x "$ADD_PATH" ]; then
+                "$ADD_PATH" --version
                 exit $?
             fi
-            echo "$TOOL not installed. Run: $SELF_DIR/$ADD" >&2
+            echo "$TOOL not installed. Run: $ADD_PATH" >&2
             exit 127
             ;;
     esac
@@ -70,11 +75,11 @@ shim_main() {
     fi
 
     # 3. Not available — run the add- script.
-    if [ -x "$SELF_DIR/$ADD" ]; then
+    if [ -x "$ADD_PATH" ]; then
         echo "[Shim] $TOOL not found, running $ADD..." >&2
-        "$SELF_DIR/$ADD" || {
+        "$ADD_PATH" || {
             echo "[Shim] $ADD failed; cannot run $TOOL." >&2
-            echo "$TOOL not installed. Run: $SELF_DIR/$ADD" >&2
+            echo "$TOOL not installed. Run: $ADD_PATH" >&2
             exit 127
         }
         # Re-walk PATH now that the add- script may have installed the tool.
@@ -98,6 +103,6 @@ shim_main() {
     fi
 
     # 4. No add- script, or add- didn't put the tool on PATH.
-    echo "$TOOL not installed. Run: $SELF_DIR/$ADD" >&2
+    echo "$TOOL not installed. Run: $ADD_PATH" >&2
     exit 127
 }

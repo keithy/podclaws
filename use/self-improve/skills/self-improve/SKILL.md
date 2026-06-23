@@ -88,7 +88,7 @@ This saves current → previous, tags :base → :current, then restarts.
 apk add --no-cache newpackage
 
 # 2. Test changes
-./sbin/run-tests.sh
+# (run the relevant tests in tests/ — e.g. ./tests/sensible_on_host_do_spec.sh)
 
 # 3. If happy, commit
 podman_on_host.sh commit mycontainer feature-x
@@ -124,13 +124,13 @@ podman_on_host.sh switch mycontainer test-version
 Inside the container, you can run add-* scripts to install packages:
 
 ```bash
-./sbin/add-bash        # Install bash shell
-./sbin/add-node        # Install Node.js
-./sbin/add-python      # Install Python
-./sbin/add-execline    # Install execline shell
-./sbin/add-gh          # Install GitHub CLI
-./sbin/add-oils        # Install Oil shell
-./sbin/add-office      # Install office tools
+./alpine-native-installers/add-bash        # Install bash shell
+./alpine-native-installers/add-node        # Install Node.js
+./alpine-native-installers/add-python      # Install Python
+./alpine-native-installers/add-execline    # Install execline shell
+./alpine-native-installers/add-gh          # Install GitHub CLI
+./alpine-native-installers/add-oils        # Install Oil shell
+./alpine-native-installers/add-office      # Install office tools
 ```
 
 After installing packages, commit the changes to persist them.

@@ -5,7 +5,7 @@
 
 . "$(dirname "$0")/lib/bash-spec.sh"
 
-SENSIBLE_ON_HOST_DO="$(cd "$(dirname "$0")/../sbin" && pwd)/sensible_on_host_do"
+SENSIBLE_ON_HOST_DO="$(cd "$(dirname "$0")/../shared-sbin" && pwd)/sensible_on_host_do"
 TEST_TASKS_DIR="/tmp/test-sensible-$$"
 TASKS_PENDING="$TEST_TASKS_DIR/pending"
 

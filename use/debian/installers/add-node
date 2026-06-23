@@ -1,0 +1,25 @@
+#!/bin/sh
+# add-node: install Node.js runtime + npm
+# Usage: add-node [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apt (Debian package repo). Bookworm ships nodejs 18.19,
+# which is OLDER than the Alpine variant (24.14). For newer Node,
+# add the NodeSource repo: https://github.com/nodesource/distributions
+# Installs: nodejs 18.19.x, npm 9.2.x
+set -e
+
+if [ "${1:-}" = "--version" ]; then
+    node_ver=$(apt-cache policy nodejs 2>/dev/null | awk '/^[[:space:]]+Candidate:/ {print $2; exit}')
+    npm_ver=$(apt-cache policy npm 2>/dev/null | awk '/^[[:space:]]+Candidate:/ {print $2; exit}')
+    if [ -z "$node_ver" ] || [ "$node_ver" = "(none)" ]; then
+        echo "nodejs (version unknown — apt index empty, run 'sudo apt-get update' to refresh)"
+        exit 0
+    fi
+    [ -n "$npm_ver" ] && [ "$npm_ver" != "(none)" ] && npm_ver="npm $npm_ver"
+    echo "nodejs $node_ver, ${npm_ver:-npm (unknown)} (install via add-node)"
+    exit 0
+fi
+
+sudo apt-get update -qq
+sudo apt-get install -y --no-install-recommends nodejs npm

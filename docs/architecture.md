@@ -17,39 +17,49 @@ A unified system for managing Python, Node, Deno, Go, and other runtimes inside 
 - **On-Demand Installation**: The shim invokes `mise` to install the tool globally (`mise use -g python@latest`) using the persisted data directory.
 - **Native Handover**: `mise` automatically generates its own shims in the ephemeral directory, which take priority on the `PATH` for all subsequent calls.
 
-## 3. Hybrid Persistence
+## 3. Persistence: podman commit + named volumes
 
-We split `mise`'s data into three ZFS-backed podman volumes, named to match
-the podman volume convention (auto-prefix from COMPOSE_PROJECT_NAME):
+Two complementary mechanisms:
 
-- **Heavy Installs - glibc (Persisted, Shared via ZFS)**: Compiled toolchains for
-  the glibc family are stored at `/srv/auto_mise-glibc/_data/installs/`. The
-  ZFS dataset is `rock-pool/mise/data-glibc`. This volume is shared across all
-  host users and any glibc-based containers (Debian, Ubuntu, RedHat). Survives
-  container restarts.
-- **Heavy Installs - musl (Persisted, Shared via ZFS)**: Compiled toolchains for
-  the musl family (Alpine containers) are stored at
-  `/srv/auto_mise-musl/_data/installs/`. The ZFS dataset is
-  `rock-pool/mise/data-musl`. Shared across all Alpine-based containers.
-- **Downloaded Tarballs (Persisted, Architecture-Independent)**: Downloaded
-  tarballs, wheels, and source files live in `/srv/auto_mise-cache/_data/`.
-  This volume is shareable across any container type (Alpine, Ubuntu, etc.)
-  for maximum cache hits. The ZFS dataset is `rock-pool/cache/mise`.
-- **Shims (Ephemeral)**: The routing shims in `/app/.local/share/mise/shims`
-  (containers) and `~/.local/share/mise/shims` (host) are local to each
-  environment, ensuring fresh boots start with a clean, predictable `PATH`.
+- **Image read-write layer (podman commit)** — `apk add` / `apt-get install`
+  packages land in the image's read-write layer. To persist, commit the
+  running container: `podman commit <ctr> localhost/goclaw:current-improved`,
+  then update the service's `image:` line. Used by both
+  `+self-improve.yml` (native, apk/apt) and `+mise-improve.yml` (mise falls
+  back to apk/apt for system tools).
 
-**Important**: Never share the data dirs (installs) across different libcs or
-architectures. Compiled binaries are not portable.
+- **Named volumes (mise only)** — when the mise overlay is in play, two
+  named podman volumes are declared:
+  - `mise-musl` mounted at `/usr/share/mise` — holds the prebuilt mise
+    binary, lua 5.1 library, and per-version language installs
+    (`installs/python/3.12.13/...`, `installs/node/24.14.1/...`, etc.).
+  - `mise-cache` mounted at `/app/.cache/mise` — holds downloaded tarballs,
+    wheels, and source files for cache hits across versions and containers.
 
-## 4. Host Setup (Multi-User Shared Cache)
+  These volumes survive `podman compose down` and `podman rm`. The next
+  container that needs `python@3.12.13` finds it already extracted and
+  skips the download/extract step. Named volumes are also
+  architecture-/libc-specific: do not share a `mise-musl` volume between
+  musl (Alpine) and glibc (Debian, RHEL) containers.
 
-On the host, the system-wide `/etc/profile.d/mise.sh` configures:
-- `MISE_DATA_DIR=/srv/auto_mise-glibc/_data` — shared glibc toolchains
-- `MISE_SHIMS_DIR=~/.local/share/mise/shims` — per-user shims (preserves version autonomy)
+  The shim layer at `/usr/local/sbin/` is **ephemeral** — re-applied by
+  the compose overlay on every container start. This is intentional: a
+  clean shim layer ensures fresh boots start with a predictable `PATH`.
 
-This lets multiple users on the host share the same heavy toolchains via ZFS
-while independently selecting their own tool versions.
+See [docs/lazy-shims.md](lazy-shims.md#state-saving-podman-interface-vs-on-disk-cache)
+for the full state-saving model and decision guide for which overlay to
+pick.
+
+## 4. Host Setup (Multi-User Shared Cache) — future work
+
+The original design placed `MISE_DATA_DIR=/srv/auto_mise-glibc/_data` on the
+host so multiple host users could share heavy toolchains via ZFS, with
+per-user shims under `~/.local/share/mise/shims`. The current podclaws
+deployment does not use this layout — named volumes are per-host and
+shared at the podman level, not at the user level. Multi-user host
+sharing is documented here for reference but is not currently wired up;
+the actual host configuration is whatever the developer chooses for
+their local mise install.
 
 ## 5. Project-Level Configurations
 

@@ -1,0 +1,59 @@
+#!/bin/sh
+# add-mise: install mise (https://mise.jdx.dev/) version manager
+# Usage: add-mise [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: read the mise binary and lua 5.1 lib from the docker
+# volume `mise-musl` (mounted at /usr/share/mise/ in the container).
+# Install to the container's writable layer:
+#   - /bin/mise               (so which mise returns /bin/mise)
+#   - /usr/lib/liblua.so.5.1.5 + /usr/lib/liblua.so.5 symlink
+#
+# The staging binaries in /usr/share/mise/RELEASES/ are read-only from
+# this script's perspective. We copy OUT of the volume to the
+# container's own filesystem (/bin/, /usr/lib/).
+#
+# /bin/mise is wiped on podman compose down (writable layer gone), so
+# add-mise re-runs on every container recreate. /bin is the same place
+# where /bin/goclaw is bind-mounted, keeping mise and goclaw together.
+#
+# Note: same script body as the Alpine variant — distro-agnostic.
+set -e
+
+# Source: the docker volume `mise-musl` (mounted at /usr/share/mise).
+MISE_SRC=/usr/share/mise/RELEASES/mise/2025.8.20/aarch64/mise
+LUA_SRC=/usr/share/mise/RELEASES/lua/5.1.5/aarch64/liblua.so.5.1.5
+
+# Destination: the container's writable layer.
+MISE_DST=/bin/mise
+LUA_DST=/usr/lib/x86_64-linux-gnu/liblua.so.5.1.5
+
+# Copy the mise binary. /bin is the container's image filesystem
+# (writable via root, not a volume mount). sudo needed for write access.
+if [ -f "$MISE_SRC" ] && [ ! -x "$MISE_DST" ]; then
+    sudo cp "$MISE_SRC" "$MISE_DST"
+    sudo chmod +x "$MISE_DST"
+fi
+
+# Copy the lua 5.1 library and symlink. On Debian, the multiarch lib
+# path is /usr/lib/x86_64-linux-gnu/, not /usr/lib/ like on Alpine.
+# /usr/lib is the container's writable layer too — wiped on podman
+# compose down. Re-create on every call to add-mise.
+if [ -f "$LUA_SRC" ]; then
+    sudo cp "$LUA_SRC" "$LUA_DST"
+    sudo ln -sf liblua.so.5.1.5 /usr/lib/x86_64-linux-gnu/liblua.so.5
+fi
+
+if [ "${1:-}" = "--version" ]; then
+    echo "mise 2025.8.20 (install via add-mise)"
+    exit 0
+fi
+
+if [ ! -x "$MISE_DST" ]; then
+    echo "add-mise: no mise binary at $MISE_DST" >&2
+    echo "  source: $MISE_SRC" >&2
+    exit 1
+fi
+
+# Exec the installed mise binary.
+exec "$MISE_DST" "$@"

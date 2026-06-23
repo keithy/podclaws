@@ -1,0 +1,100 @@
+#!/bin/sh
+# add-python: install Python runtime
+# Usage: add-python [base|full]
+#   base  - python3 + pip (default; what the shim uses)
+#   full  - all Python skill deps (pandas, pypdf, openpyxl, etc.)
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: mise (https://mise.jdx.dev/) for python, pip for the full
+# deps. Falls back to apk/apt if mise isn't available.
+# Installs: python 3.12.13, pip 25.x (from the mise-installed python)
+set -e
+
+# Detect OS package manager. Used for fallbacks. mise is the primary
+# install path; this is only reached when mise is missing or fails.
+detect_pkg_mgr() {
+    if command -v apk >/dev/null 2>&1; then
+        echo apk
+    elif command -v apt-get >/dev/null 2>&1; then
+        echo apt
+    else
+        echo none
+    fi
+}
+
+# Resolve a python version. If the pinned version is not yet in mise's
+# install cache, `mise use -g` downloads + compiles. Slow on first call,
+# fast on subsequent.
+PYTHON_VERSION="${PYTHON_VERSION:-3.12.13}"
+
+if [ "${1:-}" = "--version" ]; then
+    if command -v mise >/dev/null 2>&1; then
+        echo "python $PYTHON_VERSION (via mise $PYTHON_VERSION; install via add-python)"
+    else
+        case "$(detect_pkg_mgr)" in
+            apk) echo "python (apk fallback, version unknown — run 'sudo apk update') (install via add-python)" ;;
+            apt) echo "python (apt fallback, version unknown — run 'sudo apt-get update') (install via add-python)" ;;
+            *)   echo "python (no installer available) (install via add-python)" ;;
+        esac
+    fi
+    exit 0
+fi
+
+MODE="${1:-base}"
+
+echo "Installing Python runtime ($MODE) via mise..."
+
+# Primary: mise. mise must already be on PATH (the goclaw service starts
+# with mise in PATH at position 1). `mise use -g` writes to
+# ~/.config/mise/config.toml and triggers the install on next shell.
+if command -v mise >/dev/null 2>&1; then
+    mise use -g "python@$PYTHON_VERSION"
+
+    # Get the actual installed python binary path. mise's shim is
+    # already on PATH, so `python3` works directly.
+    PYTHON_BIN="$(mise where python@$PYTHON_VERSION 2>/dev/null)/bin/python3"
+    if [ -x "$PYTHON_BIN" ]; then
+        # Ensure pip is available in the venv.
+        "$PYTHON_BIN" -m ensurepip --upgrade 2>/dev/null || true
+    fi
+else
+    # Fallback: OS package manager
+    case "$(detect_pkg_mgr)" in
+        apk)
+            echo "  mise not found, falling back to apk"
+            sudo apk add --no-cache python3 py3-pip
+            ;;
+        apt)
+            echo "  mise not found, falling back to apt"
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends \
+                python3 python3-pip python3-venv python3-dev
+            ;;
+        *)
+            echo "add-python: neither mise nor an OS package manager found" >&2
+            exit 1
+            ;;
+    esac
+fi
+
+case "${MODE}" in
+    full)
+        # Use pip3 directly — picks up the mise-managed python via PATH.
+        for pkg in \
+            "pypdf~=6.9.2" \
+            "openpyxl~=3.1.5" \
+            "python-pptx~=1.0.2" \
+            "pdfplumber~=0.11.9" \
+            "pdf2image~=1.17.0" \
+            "markitdown<0.2.0" \
+            "pandas~=3.0.2" \
+            "defusedxml~=0.7.1" \
+            "lxml~=6.0.2" \
+            "anthropic>=0.88.0,<2.0.0"; do
+
+            pip3 install --no-cache-dir --break-system-packages "$pkg"
+        done
+        ;;
+esac
+
+echo "Python $MODE installed successfully"

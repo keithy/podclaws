@@ -1,0 +1,21 @@
+#!/bin/sh
+# add-git: install git
+# Usage: add-git [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apt (Debian package repo). Bookworm ships git 2.42.
+# Installs: git 2.42.x
+set -e
+
+if [ "${1:-}" = "--version" ]; then
+    ver=$(apt-cache policy git 2>/dev/null | awk '/^[[:space:]]+Candidate:/ {print $2; exit}')
+    if [ -z "$ver" ] || [ "$ver" = "(none)" ]; then
+        echo "git (version unknown — apt index empty, run 'sudo apt-get update' to refresh)"
+        exit 0
+    fi
+    echo "git $ver (install via add-git)"
+    exit 0
+fi
+
+sudo apt-get update -qq
+sudo apt-get install -y --no-install-recommends git

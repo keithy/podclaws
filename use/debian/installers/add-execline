@@ -1,0 +1,26 @@
+#!/bin/sh
+# add-execline: install execline (minimalist shell)
+# Usage: add-execline [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apt (Debian bookworm ships execline 2.9.3.0 in main).
+set -e
+
+if [ "${1:-}" = "--version" ]; then
+    # apt-cache policy outputs:
+    #   execline:
+    #     Installed: (none)
+    #     Candidate: 2.9.3.0-1
+    #     Version table:
+    #        ...
+    ver=$(apt-cache policy execline 2>/dev/null | awk '/^[[:space:]]+Candidate:/ {print $2; exit}')
+    if [ -z "$ver" ] || [ "$ver" = "(none)" ]; then
+        echo "execline (version unknown — apt index empty, run 'sudo apt-get update' to refresh)"
+        exit 0
+    fi
+    echo "execline $ver (install via add-execline)"
+    exit 0
+fi
+
+sudo apt-get update -qq
+sudo apt-get install -y --no-install-recommends execline

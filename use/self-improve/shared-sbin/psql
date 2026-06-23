@@ -1,9 +1,16 @@
 #!/bin/sh
 # Lazy shim for psql
+#
+# Custom flow: doesn't use shim-common.sh because psql's install path
+# is dynamic (it must match the remote DB version) and the post-install
+# exec has to pick between /usr/bin and /usr/local/bin.
+#
+# add-pg-client is on PATH via the +self-improve.yml bind-mount of the
+# installer dir at /usr/local/bin, so no explicit path is needed.
 
 if [ ! -x "/usr/bin/psql" ] && [ ! -x "/usr/local/bin/psql" ]; then
     echo "[Shim] psql requested. Bootstrapping via add-pg-client..." >&2
-    "$(dirname "$0")/add-pg-client"
+    add-pg-client
 fi
 
 # Fallback to the real binary

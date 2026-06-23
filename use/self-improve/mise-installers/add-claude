@@ -1,0 +1,26 @@
+#!/bin/sh
+# add-claude: install Claude CLI
+# Usage: add-claude [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: mise-managed npm install -g. The npm binary comes from the
+# mise-managed node install (add-node). No OS package manager needed.
+# Installs: @anthropic-ai/claude-code ^2.1.91
+set -e
+
+if [ "${1:-}" = "--version" ]; then
+    echo "@anthropic-ai/claude-code ^2.1.91 (via mise-managed npm; install via add-claude)"
+    exit 0
+fi
+
+# Ensure node is installed via mise (idempotent — reuses existing install).
+if command -v mise >/dev/null 2>&1; then
+    mise use -g "node@${NODE_VERSION:-24.14.1}"
+else
+    echo "add-claude: mise not found; install via add-node first" >&2
+    exit 1
+fi
+
+# npm install -g uses the mise-managed npm via PATH.
+npm install -g @anthropic-ai/claude-code@^2.1.91
+echo "Claude CLI installed"

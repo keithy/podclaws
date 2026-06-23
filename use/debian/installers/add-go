@@ -1,0 +1,24 @@
+#!/bin/sh
+# add-go: install Go
+# Usage: add-go [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apt (Debian package repo). The package is named `golang-go`
+# (Alpine uses `go`). The binary is still installed as `/usr/bin/go`.
+# Bookworm ships Go 1.19, which is OLDER than the Alpine variant (1.25).
+# For a newer Go, use the upstream tarball: https://go.dev/dl/
+# Installs: golang-go 1.19.x (bookworm default; backports has 1.22+)
+set -e
+
+if [ "${1:-}" = "--version" ]; then
+    ver=$(apt-cache policy golang-go 2>/dev/null | awk '/^[[:space:]]+Candidate:/ {print $2; exit}')
+    if [ -z "$ver" ] || [ "$ver" = "(none)" ]; then
+        echo "go (version unknown — apt index empty, run 'sudo apt-get update' to refresh)"
+        exit 0
+    fi
+    echo "go $ver (golang-go in apt; for newer Go use upstream tarball) (install via add-go)"
+    exit 0
+fi
+
+sudo apt-get update -qq
+sudo apt-get install -y --no-install-recommends golang-go

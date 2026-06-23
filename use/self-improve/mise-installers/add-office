@@ -1,0 +1,38 @@
+#!/bin/sh
+# add-office: install office tools (pandoc, poppler-utils)
+# Usage: add-office [--version]
+#   --version - print the versions that would be installed (no install)
+#
+# Strategy: OS package manager. mise doesn't install these.
+# Installs: pandoc 2-3.x, poppler-utils 22-25.x
+set -e
+
+detect_pkg_mgr() {
+    if command -v apk >/dev/null 2>&1; then echo apk
+    elif command -v apt-get >/dev/null 2>&1; then echo apt
+    else echo none
+    fi
+}
+
+if [ "${1:-}" = "--version" ]; then
+    case "$(detect_pkg_mgr)" in
+        apk)
+            pandoc_ver=$(apk policy pandoc 2>/dev/null | awk '/^[[:space:]]+[0-9]/ {print $1; exit}' | sed 's/-r.*//')
+            poppler_ver=$(apk policy poppler-utils 2>/dev/null | awk '/^[[:space:]]+[0-9]/ {print $1; exit}' | sed 's/-r.*//')
+            echo "pandoc ${pandoc_ver:-?}, poppler-utils ${poppler_ver:-?} (apk) (install via add-office)"
+            ;;
+        apt)
+            pandoc_ver=$(apt-cache policy pandoc 2>/dev/null | awk '/^[[:space:]]+Candidate:/ {print $2; exit}')
+            poppler_ver=$(apt-cache policy poppler-utils 2>/dev/null | awk '/^[[:space:]]+Candidate:/ {print $2; exit}')
+            echo "pandoc ${pandoc_ver:-?}, poppler-utils ${poppler_ver:-?} (apt) (install via add-office)"
+            ;;
+        *) echo "office tools (no installer available) (install via add-office)" ;;
+    esac
+    exit 0
+fi
+
+case "$(detect_pkg_mgr)" in
+    apk) sudo apk add --no-cache pandoc poppler-utils ;;
+    apt) sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends pandoc poppler-utils ;;
+    *)   echo "add-office: no supported package manager found" >&2; exit 1 ;;
+esac

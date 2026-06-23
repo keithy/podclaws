@@ -1,0 +1,47 @@
+#!/bin/sh
+# add-oils: install Oil shell
+# Usage: add-oils [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: build from source. Requires build-essential, curl, etc.
+# Version pinned: oils-for-unix-0.37.0
+#
+# Debian uses apt-get install for build deps and apt-get remove --purge
+# for cleanup (no apk --virtual equivalent).
+set -e
+
+if [ "${1:-}" = "--version" ]; then
+    echo "oils-for-unix 0.37.0 (build from source, takes 1-2 minutes) (install via add-oils)"
+    exit 0
+fi
+
+# 1. Install build dependencies
+sudo apt-get update -qq
+sudo apt-get install -y --no-install-recommends build-essential curl ca-certificates
+
+sudo mkdir -p /usr/local/lib/oils_src
+sudo chown -R $(id -u):$(id -g) /usr/local/lib/oils_src
+
+# 2. Grab the source tarball
+curl -fsSL https://oils.pub/download/oils-for-unix-0.37.0.tar.gz |
+  tar -xz --strip-components=1 -C /usr/local/lib/oils_src
+
+cd /usr/local/lib/oils_src
+
+mkdir tmp
+TMPDIR=./tmp
+
+sudo chown -R $(id -u):$(id -g) /usr/local/lib/oils_src
+
+# 3. Configure, build, and install
+./configure
+_build/oils.sh
+
+# Running the tests is optional but recommended
+./test/unit.sh
+
+sudo ./install
+
+# 4. Cleanup build deps
+sudo apt-get remove --purge -y build-essential
+sudo apt-get autoremove -y

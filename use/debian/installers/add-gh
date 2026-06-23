@@ -1,0 +1,22 @@
+#!/bin/sh
+# add-gh: install GitHub CLI
+# Usage: add-gh [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apt (Debian package repo). The package is named `gh`
+# (Alpine uses `github-cli`).
+# Installs: gh 2.81.0 (bookworm-backports may be newer)
+set -e
+
+if [ "${1:-}" = "--version" ]; then
+    ver=$(apt-cache policy gh 2>/dev/null | awk '/^[[:space:]]+Candidate:/ {print $2; exit}')
+    if [ -z "$ver" ] || [ "$ver" = "(none)" ]; then
+        echo "gh (version unknown — apt index empty, run 'sudo apt-get update' to refresh)"
+        exit 0
+    fi
+    echo "gh $ver (install via add-gh)"
+    exit 0
+fi
+
+sudo apt-get update -qq
+sudo apt-get install -y --no-install-recommends gh

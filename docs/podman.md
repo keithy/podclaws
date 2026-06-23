@@ -126,6 +126,26 @@ NPM installations into `/app/data/.runtime`. Since we use rootless Podman and co
    - Because `~/.local/share/mise/shims` is mapped to the *very front* of the container's `PATH`, all subsequent calls hit the native `mise` shim and bypass our lazy wrapper completely.
 3. **Persistence**: Since packages and runtimes are installed directly into the container's filesystem by `mise`, they are persisted by committing the Podman container to an image, rather than relying on volume mounts.
 
+### State saving: podman commit vs on-disk cache
+
+Both `+self-improve.yml` and `+mise-improve.yml` use **podman commit** as the
+primary state mechanism — the container's read-write layer is the source of
+truth, and `podman commit <ctr> localhost/goclaw:current-improved` captures
+installed packages into a new image.
+
+The **mise** overlay additionally maintains two named volumes
+(`mise-musl`, `mise-cache`) that cache compiled language runtimes and
+downloaded tarballs on disk. These survive `podman compose down` and
+`podman rm` — so the next container that needs, say, `python@3.12.13` gets
+it from the volume without re-downloading.
+
+The **native** overlay does not use these volumes; apk/apt installs go
+straight into the image layer and are re-installed on container recreate
+if the layer is dropped.
+
+See [docs/lazy-shims.md](lazy-shims.md) for the full state-saving model
+and decision guide.
+
 ## Tasks
 
 Available mise tasks:

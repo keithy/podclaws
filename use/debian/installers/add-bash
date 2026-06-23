@@ -1,0 +1,27 @@
+#!/bin/sh
+# add-bash: install bash shell
+# Usage: add-bash [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apt (Debian package repo). Bookworm ships bash 5.2.
+# Installs: bash 5.2
+set -e
+
+if [ "${1:-}" = "--version" ]; then
+    # apt-cache policy outputs:
+    #   bash:
+    #     Installed: (none)
+    #     Candidate: 5.2.15-2+b7
+    #     Version table:
+    #        ...
+    ver=$(apt-cache policy bash 2>/dev/null | awk '/^[[:space:]]+Candidate:/ {print $2; exit}')
+    if [ -z "$ver" ] || [ "$ver" = "(none)" ]; then
+        echo "bash (version unknown — apt index empty, run 'sudo apt-get update' to refresh)"
+        exit 0
+    fi
+    echo "bash $ver (install via add-bash)"
+    exit 0
+fi
+
+sudo apt-get update -qq
+sudo apt-get install -y --no-install-recommends bash

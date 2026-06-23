@@ -1,0 +1,36 @@
+#!/bin/sh
+# add-git: install git
+# Usage: add-git [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: OS package manager. mise doesn't install git.
+# Installs: git 2.x (apk / apt)
+set -e
+
+detect_pkg_mgr() {
+    if command -v apk >/dev/null 2>&1; then echo apk
+    elif command -v apt-get >/dev/null 2>&1; then echo apt
+    else echo none
+    fi
+}
+
+if [ "${1:-}" = "--version" ]; then
+    case "$(detect_pkg_mgr)" in
+        apk)
+            ver=$(apk policy git 2>/dev/null | awk '/^[[:space:]]+[0-9]/ {print $1; exit}' | sed 's/-r.*//')
+            if [ -n "$ver" ]; then echo "git $ver (apk) (install via add-git)"; else echo "git (apk version unknown) (install via add-git)"; fi
+            ;;
+        apt)
+            ver=$(apt-cache policy git 2>/dev/null | awk '/^[[:space:]]+Candidate:/ {print $2; exit}')
+            if [ -n "$ver" ] && [ "$ver" != "(none)" ]; then echo "git $ver (apt) (install via add-git)"; else echo "git (apt version unknown) (install via add-git)"; fi
+            ;;
+        *) echo "git (no installer available) (install via add-git)" ;;
+    esac
+    exit 0
+fi
+
+case "$(detect_pkg_mgr)" in
+    apk) sudo apk add --no-cache git ;;
+    apt) sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends git ;;
+    *)   echo "add-git: no supported package manager found" >&2; exit 1 ;;
+esac

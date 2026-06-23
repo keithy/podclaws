@@ -49,7 +49,7 @@ if fi, err := os.Stat(pkgHelperSocket); err == nil && fi.Mode().Type()&os.ModeSo
 
 ## Mise Bootstrap Shims (podclaws)
 
-Location: `/code/podclaws/use/self-improve/sbin/`. Mounted into the goclaw container at `/usr/local/sbin/` (and the `self-improve` skill at `/app/bundled-skills/self-improve`) via the `+self-improve.yml` overlay.
+Location: shims at `/code/podclaws/use/self-improve/shared-sbin/`, Alpine installers at `/code/podclaws/use/alpine/installers/`, Debian installers at `/code/podclaws/use/debian/installers/`, and the optional mise-based installers at `/code/podclaws/use/self-improve/mise-installers/`. Mounted into the goclaw container at `/usr/local/sbin/` (shims) and `/usr/local/bin/` (installers), and the `self-improve` skill at `/app/bundled-skills/self-improve` via the `+self-improve.yml` overlay. For mise, use `+mise-improve.yml` instead of `+self-improve.yml` (mutually exclusive).
 
 ### Architecture (as of 2026-06-16)
 
@@ -62,20 +62,27 @@ The shim is a **thin delegator** to a corresponding `add-*` script. The shim has
 - The PATH walk is manual (not `command -v`) because the shim's own path is in PATH ahead of `/usr/bin/<tool>`, so `command -v` would always return the shim.
 - The `add-*` script supports `--version` (print what would be installed) and the default mode (do the install). For apk-based scripts, `--version` uses `apk policy <pkg>` which is offline in steady state.
 
-### The 11 shims
+### The shims
 
+11 shims use `shim-common.sh`:
 `python`, `python3`, `pip`, `pip3`, `pipx` → `add-python` (apk: python 3.12.13, pip 25.1.1)
 `node`, `npm` → `add-node` (apk: nodejs 24.14.1, npm 11.11.0)
 `go` → `add-go` (apk: go 1.25.10)
 `gh` → `add-gh` (apk: github-cli 2.83.0)
-`mise` → `add-mise` (staged from RELEASES_MUSL/mise/2025.8.20/aarch64/mise; needs lua5.1-libs side-staged at RELEASES_MUSL/lua/5.1.5/aarch64/liblua.so.5.1.5)
+`mise` → `add-mise` (staged from `/usr/share/mise/RELEASES/mise/2025.8.20/aarch64/mise` via the `mise-musl` volume; needs lua 5.1 lib side-staged)
 `pg_dump` → `add-pg-client` (apk: postgresql18-client 18.4, hardcoded)
 
-`claude`, `psql` have custom flows and are out of scope of the shim layer.
+`claude` and `psql` have custom flows (no stub, no `shim-common.sh`) and are out of scope of the standard shim layer.
 
 ### The 12 `add-*` scripts
 
-All use **apk** (or curl from upstream) today. Each header comments the strategy and the pinned version. To migrate an `add-*` from apk to mise, change that single file — the shim contract is unchanged.
+Today we ship **three installer dirs**, each with a full set of 12 add-* scripts:
+
+- `use/alpine/installers/` — apk-based. Default Alpine path.
+- `use/debian/installers/` — apt-based. Default Debian path.
+- `use/self-improve/mise-installers/` — mise for languages (python, node, go, claude), apk/apt for system tools (bash, git, gh, etc.). Used via the `+mise-improve.yml` overlay.
+
+To migrate an `add-*` from apk to mise (or vice versa), change that single file in the relevant installer dir — the shim contract is unchanged.
 
 Versions as of 2026-06-16 (alpine 3.23):
 - python 3.12.13, pip 25.1.1
@@ -83,7 +90,7 @@ Versions as of 2026-06-16 (alpine 3.23):
 - go 1.25.10
 - bash 5.3.3, git 2.52.0
 - gh 2.83.0 (apk, alpine community as `github-cli`)
-- mise 2025.8.20 (RELEASES_MUSL staging; lua 5.1 symlink recreated on each add-mise call because /usr/lib doesn't persist)
+- mise 2025.8.20 (staged in the `mise-musl` volume at `/usr/share/mise/RELEASES/mise/2025.8.20/aarch64/mise`; lua 5.1 lib side-staged at `/usr/share/mise/RELEASES/lua/5.1.5/aarch64/liblua.so.5.1.5`; lua 5.1 symlink recreated on each `add-mise` call because `/usr/lib` doesn't persist across `podman compose down`)
 - postgresql18-client 18.4 (hardcoded; live probe at install time, fallback 18)
 - execline 2.9.7.0, pandoc 3.8.2.1, poppler-utils 25.12.0
 
@@ -105,7 +112,7 @@ Versions as of 2026-06-16 (alpine 3.23):
 
 ## podclaws Compose Layout
 
-- Root: `podman-compose.yml` — declares `default` + `goclaw-net` networks and the `mise-musl`, `mise-glibc`, `mise-cache` volumes.
+- Root: `podman-compose.yml` — declares `default` + `goclaw-net` networks. Named volumes `mise-musl` and `mise-cache` are declared in the `+mise-improve.yml` overlay (only when using mise).
 - Services/overlays live under `use/<agent>/` and other top-level dirs.
 - Filename convention: `foo.yml` (service), `+foo.yml` (overlay), `foo.bar.yml` (root).
 - `podman/compose-services-select.sh` (wrapped by `mise run services:select`) manages the `COMPOSE_FILE` variable in `.env` based on selections in `.env-compose`.

@@ -1,15 +1,26 @@
-# Skeleton compose file with goclaw service definition.
-# Use with overlay:
-#   docker compose -f use/goclaw/service.goclaw.yml -f use/goclaw/+self-improve.yml up -d
+# Mise installer overlay for goclaw
+# Replaces +self-improve.yml's native (apk) installer dir with the
+# mise-based installer dir. Use as a drop-in alternative — pick one:
 #
-# Variables (from .env):
-#   GOCLAW_DEPLOY_VERSION   e.g. arm64/latest, amd64/v1.9.0  (default: arm64/latest)
-#   GOCLAW_PORT             Web UI port (default: 18790)
-#   GOCLAW_RELEASES         Path to releases dir (default: ../RELEASES/goclaw)
+#   Native (apk):
+#     docker compose -f use/goclaw/service.goclaw.yml -f use/goclaw/+self-improve.yml up -d
+#   Mise:
+#     docker compose -f use/goclaw/service.goclaw.yml -f use/goclaw/+mise-improve.yml up -d
+#
+# Bind-mounts:
+#   /usr/local/sbin/         → use/self-improve/shared-sbin/         (shims)
+#   /usr/local/bin/          → use/self-improve/mise-installers/     (mise-based add-*)
+#   /app/bundled-skills/self-improve/  → use/self-improve/skills/self-improve/
+#
+# Adds the mise configuration (env, PATH, named volumes) that the mise
+# installer scripts need. The mise install dir auto-detects apk vs apt
+# for tools that mise can't install (bash, git, gh, etc.).
 
 services:
   goclaw:
-      
+    environment:
+      - HOST_TASKS_DIR=/app/data/.runtime/sensible/tasks
+            
       # Mise hybrid configuration:
       # MISE_DATA_DIR holds compiled binaries (architecture + libc specific).
       #   Mounted from the 'mise-musl' volume at /usr/share/mise. The volume's
@@ -46,6 +57,15 @@ services:
     volumes:
       - mise-musl:/usr/share/mise
       - mise-cache:/app/.cache/mise
+
+      # shims
+      - ./use/self-improve/shared-sbin:/usr/local/sbin:ro      
+      
+      # - ./use/alpine/installers:/usr/local/bin:ro
+      - ./use/self-improve/mise-installers:/usr/local/bin:ro
+
+      # skills
+      - ./use/self-improve/skills/self-improve:/app/bundled-skills/self-improve:ro
 
 volumes:
   mise-musl:

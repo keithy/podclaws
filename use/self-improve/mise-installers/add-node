@@ -1,0 +1,54 @@
+#!/bin/sh
+# add-node: install Node.js runtime + npm
+# Usage: add-node [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: mise for node, OS package manager as fallback.
+# Installs: nodejs 24.14.1 (pinned)
+set -e
+
+detect_pkg_mgr() {
+    if command -v apk >/dev/null 2>&1; then echo apk
+    elif command -v apt-get >/dev/null 2>&1; then echo apt
+    else echo none
+    fi
+}
+
+NODE_VERSION="${NODE_VERSION:-24.14.1}"
+
+if [ "${1:-}" = "--version" ]; then
+    if command -v mise >/dev/null 2>&1; then
+        echo "nodejs $NODE_VERSION (via mise; install via add-node)"
+    else
+        case "$(detect_pkg_mgr)" in
+            apk) echo "nodejs (apk fallback) (install via add-node)" ;;
+            apt) echo "nodejs (apt fallback, may be older — bookworm ships 18.x) (install via add-node)" ;;
+            *)   echo "nodejs (no installer available) (install via add-node)" ;;
+        esac
+    fi
+    exit 0
+fi
+
+echo "Installing Node.js via mise..."
+
+if command -v mise >/dev/null 2>&1; then
+    mise use -g "node@$NODE_VERSION"
+else
+    case "$(detect_pkg_mgr)" in
+        apk)
+            echo "  mise not found, falling back to apk"
+            sudo apk add --no-cache nodejs npm
+            ;;
+        apt)
+            echo "  mise not found, falling back to apt"
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends nodejs npm
+            ;;
+        *)
+            echo "add-node: neither mise nor an OS package manager found" >&2
+            exit 1
+            ;;
+    esac
+fi
+
+echo "Node.js installed successfully"

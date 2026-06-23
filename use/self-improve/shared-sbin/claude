@@ -1,0 +1,16 @@
+#!/bin/sh
+# Lazy shim for claude
+#
+# --version / -V / -v: defers to add-claude --version.
+# anything else: execs real claude if on PATH; else runs add-claude.
+#
+# Standard shim flow (see lib/shim-common.sh). add-claude installs
+# nodejs/npm + @anthropic-ai/claude-code globally; the npm install -g
+# puts the claude binary on PATH (either as /usr/local/bin/claude in
+# native mode, or via mise shims in mise mode). The add-* script
+# encapsulates the install strategy (apk/apt/mise) for the active overlay.
+
+. "$(dirname "$0")/lib/shim-common.sh"
+TOOL=claude
+ADD=add-claude
+shim_main "$@"

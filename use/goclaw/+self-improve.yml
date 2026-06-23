@@ -1,13 +1,29 @@
-# Self-improve overlay for goclaw
-# Mounts scripts and skills into the container
+# Self-improve overlay for goclaw (native / apk)
+# Mounts shims, native (apk) installers, and skills into the container.
+# Alternative: use +mise-improve.yml instead for mise-based installs.
+#
+# Layout:
+#   /usr/local/sbin/         → use/self-improve/shared-sbin/  (shims, lazy fallback)
+#   /usr/local/bin/          → use/alpine/installers/         (apk-based add-*)
+#   /app/bundled-skills/self-improve/  → use/self-improve/skills/self-improve/
 #
 # Launch:
 #   docker compose -f use/goclaw/service.goclaw.yml -f use/goclaw/+self-improve.yml up -d
+#   # or for mise instead of apk:
+#   docker compose -f use/goclaw/service.goclaw.yml -f use/goclaw/+mise-improve.yml up -d
 
 services:
   goclaw:
-    volumes:
-      - ${SELF_IMPROVE_DIR:-./use/self-improve}/sbin:/usr/local/sbin:ro
-      - ${SELF_IMPROVE_DIR:-./use/self-improve}/skills/self-improve:/app/bundled-skills/self-improve:ro
     environment:
       - HOST_TASKS_DIR=/app/data/.runtime/sensible/tasks
+      
+    volumes:
+      # shims
+      - ./use/self-improve/shared-sbin:/usr/local/sbin:ro
+
+      # native installers      
+      - ./use/alpine/installers:/usr/local/bin:ro
+      
+      # skills
+      - ./use/self-improve/skills/self-improve:/app/bundled-skills/self-improve:ro
+

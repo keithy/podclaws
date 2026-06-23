@@ -50,7 +50,7 @@ GoClaw is completely unaware of `mise`, ZFS volumes, or shim directories. It jus
 
 #### Per-Version Package Isolation
 
-Because `mise` installs each tool version into its own directory (e.g., `/srv/auto_mise-glibc/_data/installs/python/3.11.x/`, `python/3.12.x/`, etc.), pip packages are *strictly scoped* to their parent interpreter. 
+Because `mise` installs each tool version into its own directory (e.g., `/usr/share/mise/installs/python/3.11.x/`, `python/3.12.x/`, etc. — backed by the `mise-musl` named volume), pip packages are *strictly scoped* to their parent interpreter.
 
 - `pip3 install pandas` invoked under Python 3.11 installs to `python/3.11.x/lib/.../site-packages/pandas/`.
 - `pip3 install pandas` invoked under Python 3.12 installs to `python/3.12.x/lib/.../site-packages/pandas/`.
@@ -73,6 +73,6 @@ _.python.venv = { path = "/srv/mise/venvs/my-project", create = true }
 
 The `_` prefix in `_.python.venv` is a mise-specific directive telling mise to manage the venv transparently. When the project directory is entered, mise prepends the venv's `bin/` to `PATH` and (if `create = true`) auto-builds it using `uv` (if available) or `python -m venv`.
 
-> **⚠️ Caveat with our shim-based setup:** The upstream docs note that *"Virtualenv activation requires `mise activate` or `mise exec`. When using shims alone, the venv's `bin/` directory is not added to PATH."* This means that for GoClaw processes (which do not source a shell profile and therefore never trigger `mise activate`), a venv's installed CLI scripts will *not* shadow our `sbin/*` shims on the `PATH`. The shim will be found first. This is generally fine for typical GoClaw workflows (which call `python3 -c "import pandas"` or `pip install <pkg>`), but projects that rely on invoking scripts *from inside the venv's bin/* must either invoke them via their full path or use `mise exec -- <script>`.
+> **⚠️ Caveat with our shim-based setup:** The upstream docs note that *"Virtualenv activation requires `mise activate` or `mise exec`. When using shims alone, the venv's `bin/` directory is not added to PATH."* This means that for GoClaw processes (which do not source a shell profile and therefore never trigger `mise activate`), a venv's installed CLI scripts will *not* shadow the shims at `/usr/local/sbin/` on the `PATH`. The shim will be found first. This is generally fine for typical GoClaw workflows (which call `python3 -c "import pandas"` or `pip install <pkg>`), but projects that rely on invoking scripts *from inside the venv's bin/* must either invoke them via their full path or use `mise exec -- <script>`.
 
 Per-version and venv packages can coexist: `[tools].python.postinstall` installs into the core interpreter, while venv packages live in the venv itself. The venv takes precedence on `PATH`, with the core interpreter as a fallback — but only when the calling shell has activated mise (not when using bare shims as GoClaw does).

@@ -1,0 +1,53 @@
+#!/bin/sh
+# add-mise: install mise (https://mise.jdx.dev/) version manager
+# Usage: add-mise [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: same as the native installer — copy the mise binary and
+# lua 5.1 lib from the docker volume `mise-musl` (mounted at
+# /usr/share/mise/ in the container) to the container's writable layer.
+# Distro-agnostic.
+set -e
+
+# Source: the docker volume `mise-musl` (mounted at /usr/share/mise).
+MISE_SRC=/usr/share/mise/RELEASES/mise/2025.8.20/aarch64/mise
+LUA_SRC=/usr/share/mise/RELEASES/lua/5.1.5/aarch64/liblua.so.5.1.5
+
+# Destination: the container's writable layer.
+MISE_DST=/bin/mise
+
+# Detect the multiarch lib path (Debian uses x86_64-linux-gnu; Alpine
+# uses plain /usr/lib). Falls back to /usr/lib for unknown layouts.
+if [ -d /usr/lib/x86_64-linux-gnu ]; then
+    LUA_DST=/usr/lib/x86_64-linux-gnu/liblua.so.5.1.5
+    LUA_LINK_DIR=/usr/lib/x86_64-linux-gnu
+else
+    LUA_DST=/usr/lib/liblua.so.5.1.5
+    LUA_LINK_DIR=/usr/lib
+fi
+
+# Copy the mise binary.
+if [ -f "$MISE_SRC" ] && [ ! -x "$MISE_DST" ]; then
+    sudo cp "$MISE_SRC" "$MISE_DST"
+    sudo chmod +x "$MISE_DST"
+fi
+
+# Copy the lua 5.1 library and symlink.
+if [ -f "$LUA_SRC" ]; then
+    sudo cp "$LUA_SRC" "$LUA_DST"
+    sudo ln -sf liblua.so.5.1.5 "$LUA_LINK_DIR/liblua.so.5"
+fi
+
+if [ "${1:-}" = "--version" ]; then
+    echo "mise 2025.8.20 (install via add-mise)"
+    exit 0
+fi
+
+if [ ! -x "$MISE_DST" ]; then
+    echo "add-mise: no mise binary at $MISE_DST" >&2
+    echo "  source: $MISE_SRC" >&2
+    exit 1
+fi
+
+# Exec the installed mise binary.
+exec "$MISE_DST" "$@"

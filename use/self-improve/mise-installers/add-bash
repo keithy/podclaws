@@ -1,0 +1,46 @@
+#!/bin/sh
+# add-bash: install bash shell
+# Usage: add-bash [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: OS package manager. Bash is a system tool, not a language —
+# mise can't install it. (mise manages language runtimes; system shells
+# are outside its scope.)
+# Installs: bash 5.x (apk) / bash 5.2 (apt bookworm)
+set -e
+
+detect_pkg_mgr() {
+    if command -v apk >/dev/null 2>&1; then echo apk
+    elif command -v apt-get >/dev/null 2>&1; then echo apt
+    else echo none
+    fi
+}
+
+if [ "${1:-}" = "--version" ]; then
+    case "$(detect_pkg_mgr)" in
+        apk)
+            ver=$(apk policy bash 2>/dev/null | awk '/^[[:space:]]+[0-9]/ {print $1; exit}' | sed 's/-r.*//')
+            if [ -z "$ver" ]; then
+                echo "bash (apk version unknown — run 'sudo apk update') (install via add-bash)"
+            else
+                echo "bash $ver (apk) (install via add-bash)"
+            fi
+            ;;
+        apt)
+            ver=$(apt-cache policy bash 2>/dev/null | awk '/^[[:space:]]+Candidate:/ {print $2; exit}')
+            if [ -z "$ver" ] || [ "$ver" = "(none)" ]; then
+                echo "bash (apt version unknown — run 'sudo apt-get update') (install via add-bash)"
+            else
+                echo "bash $ver (apt) (install via add-bash)"
+            fi
+            ;;
+        *) echo "bash (no installer available) (install via add-bash)" ;;
+    esac
+    exit 0
+fi
+
+case "$(detect_pkg_mgr)" in
+    apk) sudo apk add --no-cache bash ;;
+    apt) sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends bash ;;
+    *)   echo "add-bash: no supported package manager found" >&2; exit 1 ;;
+esac

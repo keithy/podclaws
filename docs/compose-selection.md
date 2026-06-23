@@ -59,9 +59,13 @@ podman compose up -d
 | Directory | Purpose |
 |-----------|---------|
 | `podman-compose.yml` | Root: defines `default` and `goclaw-net` networks, the `mise-*` volumes |
-| `use/goclaw/` | `service.goclaw.yml` (main), `service.upgrade.yml` (one-shot migrations), `+code.yml`, `+self-improve.yml` |
-| `use/original/` | `service.goclaw.yml` — legacy full-Dockerfile build variant |
-| `use/picoclaw/` | PicoClaw service (planned) |
+| `use/goclaw/` | `service.goclaw.yml` (main), `service.upgrade.yml` (one-shot migrations), `+code.yml`, `+self-improve.yml`, `+mise-improve.yml` (mutually exclusive with `+self-improve.yml`) |
+| `use/alpine/installers/` | apk-based `add-*` installer scripts (Alpine variant's installer dir) |
+| `use/debian/goclaw/` | Debian variant of the goclaw service: `service.goclaw.yml`, `+self-improve.yml` |
+| `use/debian/installers/` | apt-based `add-*` installer scripts (Debian variant's installer dir) |
+| `use/picoclaw/` | PicoClaw service (Makefile in place, image not yet built) |
+| `use/ubi8/goclaw/` | UBI 8 variant — placeholder only |
+| `use/self-improve/` | Distro-agnostic self-improve assets: `shared-sbin/` (shims), `skills/`, `tests/`, `mise-installers/` (optional mise-based installer dir) |
 | `podman/` | `+network-fix.yml`, `+user-fix.yml` — rootless-specific patches |
 | `postgres/` | `+low-cpu.yml` — postgres resource limit overlay |
 

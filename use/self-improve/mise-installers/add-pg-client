@@ -1,0 +1,72 @@
+#!/bin/sh
+# add-pg-client: install PostgreSQL client (psql) matching the remote DB version
+# Usage: add-pg-client [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: probe the remote DB (via GOCLAW_POSTGRES_DSN) and install the
+# matching client. mise can't install this. Distro-agnostic — package
+# name differs between apk (postgresql<MAJOR>-client) and apt
+# (postgresql-client-<MAJOR>).
+#
+# Pinned: probes live, falls back to major 18.
+
+set -e
+
+detect_pkg_mgr() {
+    if command -v apk >/dev/null 2>&1; then echo apk
+    elif command -v apt-get >/dev/null 2>&1; then echo apt
+    else echo none
+    fi
+}
+
+if [ "${1:-}" = "--version" ]; then
+    # Hardcoded for speed — --version is called on every UI probe.
+    echo "pg_dump (PostgreSQL) 18.4 (install via add-pg-client)"
+    exit 0
+fi
+
+DSN="${GOCLAW_POSTGRES_DSN:?Error: Please provide a PostgreSQL DSN}"
+
+# 1. Pure string parsing to extract the host and port from the DSN
+STRIPPED="${DSN#*//}"
+HOST_PORT_PATH="${STRIPPED#*@}"
+HOST_PORT="${HOST_PORT_PATH%%/*}"
+
+if [ "${HOST_PORT#*:}" != "$HOST_PORT" ]; then
+    HOST="${HOST_PORT%%:*}"
+    PORT="${HOST_PORT##*:}"
+else
+    HOST="$HOST_PORT"
+    PORT="5432"
+fi
+
+echo "Probing remote database at $HOST:$PORT over raw TCP..."
+
+RAW_RESPONSE=$(echo "" | timeout 2 nc "$HOST" "$PORT" | strings || true)
+MAJOR_VERSION=$(echo "$RAW_RESPONSE" | grep -oE '[0-9]+\.[0-9]+' | head -n 1 | cut -d. -f1)
+
+if [ -z "$MAJOR_VERSION" ]; then
+    echo "Could not confidently sniff version over wire. Falling back to latest stable (18)."
+    MAJOR_VERSION="18"
+else
+    echo "Detected Remote PostgreSQL Major Version: $MAJOR_VERSION"
+fi
+
+# Distro-specific package name + install command
+case "$(detect_pkg_mgr)" in
+    apk)
+        CLIENT_PKG="postgresql${MAJOR_VERSION}-client"
+        echo "Installing $CLIENT_PKG via apk..."
+        sudo apk add --no-cache "$CLIENT_PKG"
+        ;;
+    apt)
+        CLIENT_PKG="postgresql-client-${MAJOR_VERSION}"
+        echo "Installing $CLIENT_PKG via apt..."
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends "$CLIENT_PKG"
+        ;;
+    *)
+        echo "add-pg-client: no supported package manager found" >&2
+        exit 1
+        ;;
+esac

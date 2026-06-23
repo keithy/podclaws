@@ -1,0 +1,19 @@
+# Self-improve overlay for goclaw (Debian variant)
+# Mounts shared shims + Debian-specific apt-based add-* installers
+#
+# Layout:
+#   /usr/local/sbin/         → use/self-improve/shared-sbin/  (distro-agnostic shims)
+#   /usr/local/bin/          → use/debian/installers/         (apt-based add-*)
+#   /app/bundled-skills/self-improve/  → use/self-improve/skills/self-improve/
+#
+# Launch:
+#   docker compose -f use/debian/goclaw/service.goclaw.yml -f use/debian/goclaw/+self-improve.yml up -d
+
+services:
+  goclaw:
+    volumes:
+      - ./use/self-improve/shared-sbin:/usr/local/sbin:ro
+      - ./use/debian/installers:/usr/local/bin:ro
+      - ./use/self-improve/skills/self-improve:/app/bundled-skills/self-improve:ro
+    environment:
+      - HOST_TASKS_DIR=/app/data/.runtime/sensible/tasks

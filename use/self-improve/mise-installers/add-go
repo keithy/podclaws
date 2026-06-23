@@ -1,0 +1,54 @@
+#!/bin/sh
+# add-go: install Go
+# Usage: add-go [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: mise for go, OS package manager as fallback.
+# Installs: go 1.25.10 (pinned)
+set -e
+
+detect_pkg_mgr() {
+    if command -v apk >/dev/null 2>&1; then echo apk
+    elif command -v apt-get >/dev/null 2>&1; then echo apt
+    else echo none
+    fi
+}
+
+GO_VERSION="${GO_VERSION:-1.25.10}"
+
+if [ "${1:-}" = "--version" ]; then
+    if command -v mise >/dev/null 2>&1; then
+        echo "go $GO_VERSION (via mise; install via add-go)"
+    else
+        case "$(detect_pkg_mgr)" in
+            apk) echo "go (apk fallback) (install via add-go)" ;;
+            apt) echo "go (apt golang-go fallback, may be older — bookworm ships 1.19) (install via add-go)" ;;
+            *)   echo "go (no installer available) (install via add-go)" ;;
+        esac
+    fi
+    exit 0
+fi
+
+echo "Installing Go via mise..."
+
+if command -v mise >/dev/null 2>&1; then
+    mise use -g "go@$GO_VERSION"
+else
+    case "$(detect_pkg_mgr)" in
+        apk)
+            echo "  mise not found, falling back to apk"
+            sudo apk add --no-cache go
+            ;;
+        apt)
+            echo "  mise not found, falling back to apt"
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends golang-go
+            ;;
+        *)
+            echo "add-go: neither mise nor an OS package manager found" >&2
+            exit 1
+            ;;
+    esac
+fi
+
+echo "Go installed successfully"

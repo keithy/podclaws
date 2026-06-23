@@ -1,0 +1,20 @@
+#!/bin/sh
+# add-claude: install Claude CLI
+# Usage: add-claude [--version]
+#   --version - print the version that would be installed (no install)
+#
+# Strategy: apt for nodejs/npm, then npm install -g for the Claude CLI
+# (not in any Debian package repo). Bookworm ships nodejs 18, which
+# is older than the Alpine variant — Claude CLI works on node 18+.
+# Installs: nodejs 18.x, npm 9.x, @anthropic-ai/claude-code ^2.1.91
+set -e
+
+if [ "${1:-}" = "--version" ]; then
+    echo "@anthropic-ai/claude-code ^2.1.91 (install via add-claude)"
+    exit 0
+fi
+
+sudo apt-get update -qq
+sudo apt-get install -y --no-install-recommends nodejs npm
+npm install -g @anthropic-ai/claude-code@^2.1.91
+echo "Claude CLI installed"

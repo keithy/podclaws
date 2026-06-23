@@ -36,8 +36,7 @@ help: ## Show this help
 # Build current host architecture
 # --------------------------------------------------------------------
 
-build: ## Build goclaw + pkg-helper binaries
-	$(RELEASES_DIR)/$(VERSION)/goclaw $(RELEASES_DIR)/$(VERSION)/pkg-helper latest-link
+build: $(RELEASES_DIR)/$(VERSION)/goclaw $(RELEASES_DIR)/$(VERSION)/pkg-helper latest-link ## Build goclaw + pkg-helper binaries
 
 checkout-branch:
 	@if [ -n "$$(cd $(GOCLAW_DIR) && git status --porcelain)" ]; then \

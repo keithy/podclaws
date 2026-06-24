@@ -67,8 +67,10 @@ fetch-musl: ## Download musl prebuilt from upstream
 	curl -fsSL -o $(BUILD_DIR)/SHASUMS256.txt $(SHASUMS_URL)
 	$(MAKE) verify-musl
 	@echo "  → extracting mise/bin/mise"
-	tar -xzf $(BUILD_DIR)/$(MUSL_TARBALL) -C $(BUILD_DIR)
-	@ls -la $(BUILD_DIR)/mise/bin/mise
+	rm -rf $(BUILD_DIR)/mise-musl
+	mkdir -p $(BUILD_DIR)/mise-musl
+	tar -xzf $(BUILD_DIR)/$(MUSL_TARBALL) -C $(BUILD_DIR)/mise-musl --strip-components=1
+	@ls -la $(BUILD_DIR)/mise-musl/bin/mise
 
 fetch-glibc: ## Download glibc prebuilt from upstream
 	@mkdir -p $(BUILD_DIR)
@@ -77,7 +79,11 @@ fetch-glibc: ## Download glibc prebuilt from upstream
 	@echo "  → SHASUMS256.txt"
 	curl -fsSL -o $(BUILD_DIR)/SHASUMS256.txt $(SHASUMS_URL)
 	$(MAKE) verify-glibc
-	@ls -la $(BUILD_DIR)/mise
+	@echo "  → extracting mise/bin/mise"
+	rm -rf $(BUILD_DIR)/mise-glibc
+	mkdir -p $(BUILD_DIR)/mise-glibc
+	tar -xzf $(BUILD_DIR)/$(GLIBC_TARBALL) -C $(BUILD_DIR)/mise-glibc --strip-components=1
+	@ls -la $(BUILD_DIR)/mise-glibc/bin/mise
 
 # ---- Verify (SHA256 against upstream's SHASUMS256.txt) ----
 
@@ -110,12 +116,12 @@ verify-glibc: ## Verify glibc tarball SHA256
 stage-musl: ## Stage musl binary to /srv/auto_mise-musl/
 	@echo "  → $(MUSL_VOLUME)/_data/RELEASES/mise/$(VERSION)/$(ARCH)/mise"
 	install -d -m 0755 $(MUSL_VOLUME)/_data/RELEASES/mise/$(VERSION)/$(ARCH)
-	install -m 0755 $(BUILD_DIR)/mise/bin/mise $(MUSL_VOLUME)/_data/RELEASES/mise/$(VERSION)/$(ARCH)/mise
+	install -m 0755 $(BUILD_DIR)/mise-musl/bin/mise $(MUSL_VOLUME)/_data/RELEASES/mise/$(VERSION)/$(ARCH)/mise
 
 stage-glibc: ## Stage glibc binary to /srv/auto_mise-glibc/
 	@echo "  → $(GLIBC_VOLUME)/_data/RELEASES/mise/$(VERSION)/$(ARCH)/mise"
 	install -d -m 0755 $(GLIBC_VOLUME)/_data/RELEASES/mise/$(VERSION)/$(ARCH)
-	install -m 0755 $(BUILD_DIR)/mise/bin/mise $(GLIBC_VOLUME)/_data/RELEASES/mise/$(VERSION)/$(ARCH)/mise
+	install -m 0755 $(BUILD_DIR)/mise-glibc/bin/mise $(GLIBC_VOLUME)/_data/RELEASES/mise/$(VERSION)/$(ARCH)/mise
 
 # ---- Latest symlinks ----
 # 1. RELEASES/mise/latest → <VERSION>  (so the shim can walk via the

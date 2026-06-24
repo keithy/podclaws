@@ -1,0 +1,82 @@
+#!/bin/sh
+# add-mise: install mise (https://mise.jdx.dev/) version manager.
+#
+# Resolution order:
+#   1. $MISE_STAGE_DIR/mise (mise mode — bind-mounted from the
+#      mise-{musl,glibc} named volume; managed on the host by
+#      use/mise/Makefile)
+#   2. mise somewhere on PATH (any pre-existing installation)
+#   3. Bootstrap: download from upstream and install to the location
+#      specified by MISE_STAGE_DIR
+#
+# The shim and installer are split:
+#   - This script (installer) does the actual work.
+#   - use/self-improve/shared-sbin/mise (shim) is a thin wrapper that
+#     invokes this when goclaw's lazy shim layer fails to find mise
+#     on PATH.
+#
+# Configuration via env vars (set by the compose overlay):
+#   MISE_STAGE_DIR  - where to install (default /usr/bin). Set to
+#                     /usr/share/mise/bin in mise mode so the binary
+#                     is written through the bind-mount to the host
+#                     volume (persistent across container recreates).
+#   MISE_VERSION    - upstream release to fetch (default 2026.6.13).
+#                     Override when the host's pre-staged binary uses
+#                     a different version.
+#
+# mise 2026.6.x is statically linked — no separate lua lib is needed.
+set -e
+
+MISE_STAGE_DIR="${MISE_STAGE_DIR:-/usr/bin}"
+MISE_VERSION="${MISE_VERSION:-2026.6.13}"
+# strip trailing slash
+MISE_STAGE_DIR="${MISE_STAGE_DIR%/}"
+
+# 1. mise already at the staged path?
+if [ -x "$MISE_STAGE_DIR/mise" ]; then
+    exec "$MISE_STAGE_DIR/mise" "$@"
+fi
+
+# 2. mise already somewhere on PATH?
+if command -v mise >/dev/null 2>&1; then
+    exec mise "$@"
+fi
+
+# 3. Bootstrap: download from upstream, verify SHA256, install.
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+if ! command -v curl >/dev/null 2>&1; then
+    echo "add-mise: curl is required for bootstrap" >&2
+    exit 1
+fi
+
+MISE_TARBALL="mise-v${MISE_VERSION}-linux-arm64.tar.gz"
+MISE_URL="https://github.com/jdx/mise/releases/download/v${MISE_VERSION}/${MISE_TARBALL}"
+SHASUMS_URL="https://github.com/jdx/mise/releases/download/v${MISE_VERSION}/SHASUMS256.txt"
+
+curl -fsSL -o "$work/$MISE_TARBALL" "$MISE_URL" || {
+    echo "add-mise: failed to download $MISE_TARBALL" >&2
+    exit 1
+}
+curl -fsSL -o "$work/SHASUMS256.txt" "$SHASUMS_URL" || {
+    echo "add-mise: failed to download SHASUMS256.txt" >&2
+    exit 1
+}
+
+expected=$(grep -F "./$MISE_TARBALL" "$work/SHASUMS256.txt" | awk '{print $1}')
+actual=$(sha256sum "$work/$MISE_TARBALL" | awk '{print $1}')
+if [ -z "$expected" ] || [ "$expected" != "$actual" ]; then
+    echo "add-mise: SHA256 mismatch for $MISE_TARBALL" >&2
+    [ -n "$expected" ] && echo "  expected: $expected" >&2
+    echo "  actual:   $actual" >&2
+    exit 1
+fi
+
+tar -xzf "$work/$MISE_TARBALL" -C "$work"
+
+# Install to MISE_STAGE_DIR
+sudo install -d -m 0755 "$MISE_STAGE_DIR"
+sudo install -m 0755 "$work/mise/bin/mise" "$MISE_STAGE_DIR/mise"
+
+exec "$MISE_STAGE_DIR/mise" "$@"

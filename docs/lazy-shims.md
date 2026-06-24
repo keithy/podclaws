@@ -2,14 +2,15 @@
 
 The self-improve tree is split into two layers:
 
-- **Shims** (`use/self-improve/shared-sbin/`): distro-agnostic. The 13 lazy shims (`python`, `python3`, `pip`, `pip3`, `pipx`, `node`, `npm`, `go`, `gh`, `mise`, `pg_dump`, `claude`, `psql`) plus two sidecar scripts (`podman_on_host.sh`, `sensible_on_host_do.sh`) and `lib/shim-common.sh`. One source of truth, shared by every variant.
+- **Shims** (`use/self-improve/shared-sbin/`): distro-agnostic. The 13 lazy shims (`python`, `python3`, `pip`, `pip3`, `pipx`, `node`, `npm`, `go`, `gh`, `mise`, `pg_dump`, `claude`, `psql`) plus the shared `add-mise` installer and two sidecar scripts (`podman_on_host.sh`, `sensible_on_host_do.sh`) and `lib/shim-common.sh`. One source of truth, shared by every variant.
 - **Installers**: per-strategy. Each overlay picks one. Pick exactly one — the bind-mount to `/usr/local/bin/` is shadowed (last-wins) if you stack.
   - `use/alpine/installers/` — apk-based, used by the default Alpine variant.
   - `use/debian/installers/` — apt-based, used by the Debian variant.
   - `use/self-improve/mise-installers/` — mise for languages, OS package manager as fallback for system tools. Works on both Alpine and Debian.
+  - `add-mise` lives in `use/self-improve/shared-sbin/add-mise` (distro-agnostic). The compose overlay sets `MISE_STAGE_DIR` to control where it installs (`/usr/bin` in native mode, `/usr/share/mise/bin` in mise mode).
 
 - **Lazy shims** (`python`, `python3`, `pip`, `pip3`, `pipx`, `node`, `npm`, `go`, `gh`, `mise`, `pg_dump`): proxy binaries that make goclaw's hardcoded "install dependencies" action work. They are **stubs** that fall back to a real tool if one is on PATH, or to an `add-*` script if not.
-- **`add-*` scripts** (`add-bash`, `add-node`, `add-python`, `add-gh`, `add-pg-client`, `add-office`, `add-oils`, `add-execline`, `add-claude`, `add-go`, `add-git`, `add-mise`): install the real tool. Each encodes its own **strategy** (apk, curl from upstream, etc.) and the **pinned version** in a header comment.
+- **`add-*` scripts** (`add-bash`, `add-node`, `add-python`, `add-gh`, `add-pg-client`, `add-office`, `add-oils`, `add-execline`, `add-claude`, `add-go`, `add-git`): install the real tool. Each encodes its own **strategy** (apk, curl from upstream, etc.) and the **pinned version** in a header comment. (`add-mise` is the eleventh and is in `shared-sbin/`, not the installer dirs.)
 - A shared helper: `lib/shim-common.sh` — the shim's delegator logic.
 
 ## Why the shim is a thin delegator
@@ -79,7 +80,7 @@ The version of each tool is **pinned in a comment in its `add-*` script**. To up
 | gh     | 2.83.0   | apk (github-cli)  | `add-gh`      |
 | bash   | 5.3.3    | apk            | `add-bash`    |
 | git    | 2.52.0   | apk            | `add-git`     |
-| mise   | 2025.8.20 | `mise-musl` volume at `/usr/share/mise/RELEASES/mise/2025.8.20/aarch64/mise` (staged) | `add-mise` |
+| mise   | 2026.6.13 | upstream GitHub release (`use/mise/Makefile` stages the binary into `/srv/auto_mise-{musl,glibc}/_data/`) | `add-mise` |
 | curl   | 8.19.0   | apk (image-baked) | n/a        |
 | pandoc | 3.8.2.1  | apk            | `add-office`  |
 | poppler-utils | 25.12.0 | apk     | `add-office`  |

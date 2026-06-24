@@ -20,7 +20,9 @@ services:
   goclaw:
     environment:
       - HOST_TASKS_DIR=/app/data/.runtime/sensible/tasks
-            
+      - MISE_STAGE_DIR=/usr/share/mise/bin
+      - MISE_VERSION=2026.6.13
+
       # Mise hybrid configuration:
       # MISE_DATA_DIR holds compiled binaries (architecture + libc specific).
       #   Mounted from the 'mise-musl' volume at /usr/share/mise. The volume's

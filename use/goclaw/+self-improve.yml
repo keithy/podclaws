@@ -7,6 +7,9 @@
 #   /usr/local/bin/          → use/alpine/installers/         (apk-based add-*)
 #   /app/bundled-skills/self-improve/  → use/self-improve/skills/self-improve/
 #
+# add-mise is shared (lives in shared-sbin/ at /usr/local/sbin/add-mise);
+# it writes to $MISE_STAGE_DIR (set here for native mode to /usr/bin).
+#
 # Launch:
 #   docker compose -f use/goclaw/service.goclaw.yml -f use/goclaw/+self-improve.yml up -d
 #   # or for mise instead of apk:
@@ -16,14 +19,16 @@ services:
   goclaw:
     environment:
       - HOST_TASKS_DIR=/app/data/.runtime/sensible/tasks
-      
+      - MISE_STAGE_DIR=/usr/bin
+      - MISE_VERSION=2026.6.13
+
     volumes:
-      # shims
+      # shims (includes add-mise, plus the shim wrappers and sidecar scripts)
       - ./use/self-improve/shared-sbin:/usr/local/sbin:ro
 
-      # native installers      
+      # native installers
       - ./use/alpine/installers:/usr/local/bin:ro
-      
+
       # skills
       - ./use/self-improve/skills/self-improve:/app/bundled-skills/self-improve:ro
 

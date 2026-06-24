@@ -4,9 +4,9 @@ This document provides a high-level overview of the Podclaws architecture, focus
 
 ## TL;DR
 
-The **self-improve** feature lets the goclaw agent install its own tools
-and runtimes inside its container without baking them into the base image.
-Two compose overlays pick the install strategy — pick one, not both:
+The **self-improve** feature lets agents start with a miminal image and
+install their own tools and runtimes on demand. Two compose overlays
+select the installation strategy — pick one, not both:
 
 - **`+self-improve.yml`** — apk (Alpine) or apt (Debian) for everything
   Python, Node, Go, etc. come from the OS package manager. The base
@@ -14,7 +14,7 @@ Two compose overlays pick the install strategy — pick one, not both:
   is persisted by committing the image** (`podman commit <ctr>
   localhost/goclaw:current-improved`) — the apk/apt installs land in
   the container's read-write layer and survive across `podman compose
-  down/up` only if the image was committed.
+  down/up` if the image is committed.
 
 - **`+mise-improve.yml`** — mise for language runtimes (python, node,
   go), with apk/apt as fallback for system tools (bash, git, etc.).
@@ -32,6 +32,14 @@ walks PATH, finds the shim, which then calls the installer to
 bootstrap the real binary. The shim at pos 10 is the last-resort
 fallback; real binaries at `/usr/bin` (apk/apt installs) or
 `/usr/share/mise/bin` (host-staged mise) win earlier in PATH.
+
+To persist the container's state across recreates, run
+`self-commit.sh` from inside the container. That queues a host-side
+`podman commit` via the sensible task queue, captures the read-write
+layer as `localhost/goclaw:<tag>`, and restarts the container with
+the new image. The `podman_on_host.sh` and `sensible_on_host_do.sh`
+sidecar scripts are the underlying mechanism; `self-commit.sh` is the
+one-stop entry point.
 
 The **`add-mise` installer** in `use/self-improve/shared-sbin/add-mise`
 is self-bootstrapping: it can fetch the upstream mise release and

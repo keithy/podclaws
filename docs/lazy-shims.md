@@ -2,7 +2,7 @@
 
 The self-improve tree is split into two layers:
 
-- **Shims** (`use/self-improve/shared-sbin/`): distro-agnostic. The 13 lazy shims (`python`, `python3`, `pip`, `pip3`, `pipx`, `node`, `npm`, `go`, `gh`, `mise`, `pg_dump`, `claude`, `psql`) plus the shared `add-mise` installer and two sidecar scripts (`podman_on_host.sh`, `sensible_on_host_do.sh`) and `lib/shim-common.sh`. One source of truth, shared by every variant.
+- **Shims** (`use/self-improve/shared-sbin/`): distro-agnostic. The 13 lazy shims (`python`, `python3`, `pip`, `pip3`, `pipx`, `node`, `npm`, `go`, `gh`, `mise`, `pg_dump`, `claude`, `psql`) plus the shared `add-mise` installer and three sidecar scripts (`podman_on_host.sh`, `sensible_on_host_do.sh`, `self-commit.sh`) and `lib/shim-common.sh`. One source of truth, shared by every variant.
 - **Installers**: per-strategy. Each overlay picks one. Pick exactly one — the bind-mount to `/usr/local/bin/` is shadowed (last-wins) if you stack.
   - `use/alpine/installers/` — apk-based, used by the default Alpine variant.
   - `use/debian/installers/` — apt-based, used by the Debian variant.

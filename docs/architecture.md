@@ -1,20 +1,37 @@
 # Podclaws Architecture
 
-This document provides a high-level overview of the Podclaws architecture, focusing on its hybrid environment management and secure host communication model.
+This document provides a high-level overview of the Podclaws architecture. 
+The goal is to provide a basis for both experimentation and production deployment. 
+The distinguishing podclaw features are orthogonal to and useful for many agentic frameworks. 
 
-## TL;DR
+## Multiple Agentic Frameworks
 
-The **self-improve** feature lets agents start with a miminal image and
-install their own tools and runtimes on demand. Two compose overlays
-select the installation strategy — pick one, not both:
+A secure containerised architecture that efficiently supports multiple agentic frameworks.
+e.g. goclaw, picoclaw, Pi
+
+Local agent executable builds are explicitly decoupled from the deployment environment and
+are published to `./RELEASES/<name>/<version>/<binary>` and mapped into containers from there
+
+## Rootless Podman
+
+Rootless Podman, is the deployment runtime supported here, and it provides
+single-node support for both podman-compose, and kubernetes configurations.
+
+Podclaws uses `podman compose`, as an evolutionary step towards using kubernetes for
+production deployments. (podman directly generates kubernetes manifests from podman compose)
+
+## Self-Improving Minimal Containers
+
+The **self-improve** feature lets any agent start with any miminal image and
+install their own tools on demand. There are two options, 1) tools in-container,
+and 2) tools in library
 
 - **`+self-improve.yml`** — apk (Alpine) or apt (Debian) for everything
   Python, Node, Go, etc. come from the OS package manager. The base
   image is minimal; the agent gets the OS-shipped versions. **State
-  is persisted by committing the image** (`podman commit <ctr>
-  localhost/goclaw:current-improved`) — the apk/apt installs land in
-  the container's read-write layer and survive across `podman compose
-  down/up` if the image is committed.
+  is persisted by committing the image** (`on-host-commit`)
+  — the apk/apt installs land in the container's read-write layer and
+  survive across `podman compose down/up` if the image is committed.
 
 - **`+mise-improve.yml`** — mise for language runtimes (python, node,
   go), with apk/apt as fallback for system tools (bash, git, etc.).
@@ -34,11 +51,11 @@ fallback; real binaries at `/usr/bin` (apk/apt installs) or
 `/usr/share/mise/bin` (host-staged mise) win earlier in PATH.
 
 To persist the container's state across recreates, run
-`self-commit.sh` from inside the container. That queues a host-side
+`on-host-commit` from inside the container. That queues a host-side
 `podman commit` via the sensible task queue, captures the read-write
 layer as `localhost/goclaw:<tag>`, and restarts the container with
-the new image. The `podman_on_host.sh` and `sensible_on_host_do.sh`
-sidecar scripts are the underlying mechanism; `self-commit.sh` is the
+the new image. The `on-host-podman` and `on-host-sensible-do`
+sidecar scripts are the underlying mechanism; `on-host-commit` is the
 one-stop entry point.
 
 The **`add-mise` installer** in `use/self-improve/shared-sbin/add-mise`

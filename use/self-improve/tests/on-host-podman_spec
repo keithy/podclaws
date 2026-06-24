@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# Test for podman_on_host.sh
+# Test for on-host-podman
 # Tests: commit, commit_and_switch, restart, switch, rmi commands
 
 . "$(dirname "$0")/lib/bash-spec.sh"
 
-PODMAN_ON_HOST="$(cd "$(dirname "$0")/../shared-sbin" && pwd)/podman_on_host.sh"
-SENSIBLE_ON_HOST_DO="$(cd "$(dirname "$0")/../shared-sbin" && pwd)/sensible_on_host_do.sh"
+PODMAN_ON_HOST="$(cd "$(dirname "$0")/../shared-sbin" && pwd)/on-host-podman"
+SENSIBLE_ON_HOST_DO="$(cd "$(dirname "$0")/../shared-sbin" && pwd)/on-host-sensible-do"
 TEST_TASKS_DIR="/tmp/test-podman-$$"
 TASKS_PENDING="$TEST_TASKS_DIR/pending"
 
@@ -14,7 +14,7 @@ cleanup() {
   rm -rf "$TEST_TASKS_DIR" 2>/dev/null || true
 }
 
-describe "podman_on_host.sh" && {
+describe "on-host-podman" && {
 
   cleanup
 

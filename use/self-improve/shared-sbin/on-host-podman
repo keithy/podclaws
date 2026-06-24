@@ -1,24 +1,27 @@
 #!/bin/sh
-# podman_on_host.sh - queue host commands via sensible
-# Usage: podman_on_host.sh <command> [args]
-# Commands: commit, restart, switch
+# on-host-podman - queue podman host commands via the sensible task queue.
+# Usage: on-host-podman <command> [args]
+# Commands: commit, commit_and_switch, switch, restart, reset_and_switch
+#
+# The actual podman command runs on the host (via the sensible
+# protocol); the agent calls this from inside the container.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONTAINER=$(hostname)
 
-CMD="${1?Usage: podman_on_host.sh <command>}"
+CMD="${1?Usage: on-host-podman <command>}"
+shift
+TAG="${1:-next}"
 
 case "$CMD" in
   commit)
-    TAG="${1:-next}"
-    "$SCRIPT_DIR/sensible_on_host_do.sh" \
+    "$SCRIPT_DIR/on-host-sensible-do" \
       "podman commit $CONTAINER localhost/goclaw:$TAG"
     ;;
   commit_and_switch)
-    TAG="${1:-next}"
-    "$SCRIPT_DIR/sensible_on_host_do.sh" \
+    "$SCRIPT_DIR/on-host-sensible-do" \
       'if { podman rmi localhost/goclaw:previous } true' \
       'if { podman tag localhost/goclaw:current localhost/goclaw:previous } true' \
       "podman commit $CONTAINER localhost/goclaw:$TAG" \
@@ -26,19 +29,18 @@ case "$CMD" in
       'podman restart $CONTAINER'
     ;;
   switch)
-    TAG="${1:-next}"
-    "$SCRIPT_DIR/sensible_on_host_do.sh" \
+    "$SCRIPT_DIR/on-host-sensible-do" \
       'if { podman rmi localhost/goclaw:previous } true' \
       'if { podman tag localhost/goclaw:current localhost/goclaw:previous } true' \
       "if { podman tag localhost/goclaw:$TAG localhost/goclaw:current } true" \
       'podman restart $CONTAINER'
     ;;
   restart)
-    "$SCRIPT_DIR/sensible_on_host_do.sh" 'podman restart $CONTAINER'
+    "$SCRIPT_DIR/on-host-sensible-do" 'podman restart $CONTAINER'
     ;;
   reset_and_switch)
     # Reset to base image and restart
-    "$SCRIPT_DIR/sensible_on_host_do.sh" \
+    "$SCRIPT_DIR/on-host-sensible-do" \
       'if { podman rmi localhost/goclaw:previous } true' \
       'if { podman tag localhost/goclaw:current localhost/goclaw:previous } true' \
       'if { podman tag localhost/goclaw:base localhost/goclaw:current } true' \
@@ -46,7 +48,7 @@ case "$CMD" in
     ;;
   *)
     echo "Unknown command: $CMD" >&2
-    echo "Usage: podman_on_host.sh <commit|commit_and_switch|switch|restart|reset_and_switch> [tag]" >&2
+    echo "Usage: on-host-podman <commit|commit_and_switch|switch|restart|reset_and_switch> [tag]" >&2
     exit 1
     ;;
 esac

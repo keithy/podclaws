@@ -22,12 +22,12 @@ When you run installers or make changes inside the container, you can use these 
 ```bash
 # Commit current container state as a named image
 # Tag defaults to "next"
-podman_on_host.sh commit <container> [tag]
+on-host-podman commit <container> [tag]
 ```
 
 Example:
 ```bash
-podman_on_host.sh commit mycontainer my-feature
+on-host-podman commit mycontainer my-feature
 # Creates: localhost/goclaw:my-feature
 ```
 
@@ -36,12 +36,12 @@ podman_on_host.sh commit mycontainer my-feature
 ```bash
 # Switch container to use a different image tag, then restart
 # Tag defaults to "next"
-podman_on_host.sh switch <container> [tag]
+on-host-podman switch <container> [tag]
 ```
 
 Example:
 ```bash
-podman_on_host.sh switch mycontainer previous
+on-host-podman switch mycontainer previous
 # Tags :previous as :current and restarts
 ```
 
@@ -50,21 +50,21 @@ podman_on_host.sh switch mycontainer previous
 ```bash
 # Commit and immediately switch in one atomic operation
 # Tag defaults to "next"
-podman_on_host.sh commit_and_switch <container> [tag]
+on-host-podman commit_and_switch <container> [tag]
 ```
 
 ### Just Restart
 
 ```bash
 # Restart container without changing image
-podman_on_host.sh restart <container>
+on-host-podman restart <container>
 ```
 
 ### Reset to Base
 
 ```bash
 # Reset container to base image and restart
-podman_on_host.sh reset_and_switch <container>
+on-host-podman reset_and_switch <container>
 ```
 
 This saves current → previous, tags :base → :current, then restarts.
@@ -88,28 +88,28 @@ This saves current → previous, tags :base → :current, then restarts.
 apk add --no-cache newpackage
 
 # 2. Test changes
-# (run the relevant tests in tests/ — e.g. ./tests/sensible_on_host_do_spec.sh)
+# (run the relevant tests in tests/ — e.g. ./tests/on-host-sensible-do_spec.sh)
 
 # 3. If happy, commit
-podman_on_host.sh commit mycontainer feature-x
+on-host-podman commit mycontainer feature-x
 
 # 4. If it works, switch to it
-podman_on_host.sh switch mycontainer feature-x
+on-host-podman switch mycontainer feature-x
 
 # 5. If broken, roll back
-podman_on_host.sh switch mycontainer previous
+on-host-podman switch mycontainer previous
 ```
 
 ### Testing Before Switching
 
 ```bash
 # Commit but don't switch
-podman_on_host.sh commit mycontainer test-version
+on-host-podman commit mycontainer test-version
 
 # ... test the version ...
 
 # Only switch if tests pass
-podman_on_host.sh switch mycontainer test-version
+on-host-podman switch mycontainer test-version
 ```
 
 ## How It Works

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Test for sensible_on_host_do.sh
+# Test for sensible_on_host_do
 # Tests: single task, task chain, runNext chaining, || fallback
 
 . "$(dirname "$0")/lib/bash-spec.sh"
@@ -13,7 +13,7 @@ cleanup() {
   rm -rf "$TEST_TASKS_DIR" 2>/dev/null || true
 }
 
-describe "sensible_on_host_do.sh" && {
+describe "sensible_on_host_do" && {
 
   cleanup
 
@@ -21,7 +21,7 @@ describe "sensible_on_host_do.sh" && {
     it "creates task file with correct JSON" && {
       export HOST_TASKS_DIR="$TEST_TASKS_DIR"
       mkdir -p "$TASKS_PENDING"
-      FILE_ID=$("$SENSIBLE_ON_HOST_DO.sh" 'echo hello' 2>&1 | tail -1)
+      FILE_ID=$("$SENSIBLE_ON_HOST_DO" 'echo hello' 2>&1 | tail -1)
       [ -n "$FILE_ID" ]
       should_succeed
     }
@@ -37,9 +37,9 @@ describe "sensible_on_host_do.sh" && {
       export HOST_TASKS_DIR="$TEST_TASKS_DIR"
       rm -rf "$TEST_TASKS_DIR"
       mkdir -p "$TASKS_PENDING"
-      
-      "$SENSIBLE_ON_HOST_DO.sh" 'echo first' 'echo second' 'echo third' 2>&1
-      
+
+      "$SENSIBLE_ON_HOST_DO" 'echo first' 'echo second' 'echo third' 2>&1
+
       # Find all task files
       JSON_FILES=("$TASKS_PENDING"/*.json)
       [ ${#JSON_FILES[@]} -eq 3 ]
@@ -66,9 +66,9 @@ describe "sensible_on_host_do.sh" && {
       export HOST_TASKS_DIR="$TEST_TASKS_DIR"
       rm -rf "$TEST_TASKS_DIR"
       mkdir -p "$TASKS_PENDING"
-      
-      "$SENSIBLE_ON_HOST_DO.sh" 'build' '||' 'build-alt' 2>&1
-      
+
+      "$SENSIBLE_ON_HOST_DO" 'build' '||' 'build-alt' 2>&1
+
       # Should create only 1 task (combined)
       JSON_FILES=("$TASKS_PENDING"/*.json)
       [ ${#JSON_FILES[@]} -eq 1 ]
@@ -87,9 +87,9 @@ describe "sensible_on_host_do.sh" && {
       export HOST_TASKS_DIR="$TEST_TASKS_DIR"
       rm -rf "$TEST_TASKS_DIR"
       mkdir -p "$TASKS_PENDING"
-      
-      "$SENSIBLE_ON_HOST_DO.sh" 'build' '||' 'build-alt' 'deploy' 2>&1
-      
+
+      "$SENSIBLE_ON_HOST_DO" 'build' '||' 'build-alt' 'deploy' 2>&1
+
       # Should create 2 tasks: fallback task + deploy task
       JSON_FILES=("$TASKS_PENDING"/*.json)
       [ ${#JSON_FILES[@]} -eq 2 ]
@@ -107,7 +107,7 @@ describe "sensible_on_host_do.sh" && {
   context "5. usage error" && {
     it "shows usage when no args" && {
       export HOST_TASKS_DIR="$TEST_TASKS_DIR"
-      "$SENSIBLE_ON_HOST_DO.sh" 2>&1 | grep -q "Usage:"
+      "$SENSIBLE_ON_HOST_DO" 2>&1 | grep -q "Usage:"
       should_fail  # script exits with error
     }
   }

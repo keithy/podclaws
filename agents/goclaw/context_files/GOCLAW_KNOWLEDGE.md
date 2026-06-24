@@ -96,7 +96,7 @@ Versions as of 2026-06-16 (alpine 3.23):
 
 ### Tests
 
-- `use/self-improve/tests/` currently contains specs for `sensible_on_host_do.sh` and `podman_on_host.sh` only. **No shim tests yet.** A future test should:
+- `use/self-improve/tests/` currently contains specs for `on-host-sensible-do` and `on-host-podman` only. **No shim tests yet.** A future test should:
   1. Verify the spoof is fast (<10ms) and contains the install command.
   2. Verify a non-version call triggers `add-*` and exec's the real tool.
   3. Verify the PATH walk avoids the shim (no recursion).

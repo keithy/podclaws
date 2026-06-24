@@ -1,16 +1,16 @@
 #!/bin/sh
-# sensible_on_host_do.sh - queue scripts for host execution
+# on-host-sensible-do - queue scripts for host execution
 # Client end of sensible protocol (ash/busybox compatible)
 #
 # Supports "||" as fallback operator and "&&" as chain operator:
-#   sensible-do "build" "||" "build-alt"  # fallback on failure
-#   sensible-do "build" "&&" "test"       # chain on success (ignored - default behavior)
+#   on-host-sensible-do "build" "||" "build-alt"  # fallback on failure
+#   on-host-sensible-do "build" "&&" "test"       # chain on success (default)
 #   → Task1: "ifelse { build } { } { build-alt }"
 
 set -euo pipefail
 
 usage() {
-  echo "Usage: sensible_on_host_do.sh <script> [<script>...]" >&2
+  echo "Usage: on-host-sensible-do <script> [<script>...]" >&2
   echo "  Queue execline scripts for host execution." >&2
   echo "  Use '||' for fallback: \"build\" \"||\" \"build-alt\"" >&2
   echo "  Use '&&' for chain: \"build\" \"&&\" \"test\" (default behavior)" >&2

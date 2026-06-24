@@ -2,6 +2,48 @@
 
 This document provides a high-level overview of the Podclaws architecture, focusing on its hybrid environment management and secure host communication model.
 
+## TL;DR
+
+The **self-improve** feature lets the goclaw agent install its own tools
+and runtimes inside its container without baking them into the base image.
+Two compose overlays pick the install strategy — pick one, not both:
+
+- **`+self-improve.yml`** — apk (Alpine) or apt (Debian) for everything
+  Python, Node, Go, etc. come from the OS package manager. The base
+  image is minimal; the agent gets the OS-shipped versions. **State
+  is persisted by committing the image** (`podman commit <ctr>
+  localhost/goclaw:current-improved`) — the apk/apt installs land in
+  the container's read-write layer and survive across `podman compose
+  down/up` only if the image was committed.
+
+- **`+mise-improve.yml`** — mise for language runtimes (python, node,
+  go), with apk/apt as fallback for system tools (bash, git, etc.).
+  **State has two halves**: language runtimes and downloads live in
+  **the `mise-{musl,glibc}` shared volumes** (host-side, persistent
+  across container recreates without committing); local config and
+  mise-managed tools land in the container's writable layer and
+  **need `podman commit` to persist**.
+
+Both overlays mount the same shared shim layer at `/usr/local/sbin/`
+(thin wrappers in `use/self-improve/shared-sbin/`) and an installer
+dir at `/usr/local/bin/` (the `add-python`, `add-node`, etc. scripts).
+When goclaw's hardcoded `exec.Command("python", ...)` runs, the shell
+walks PATH, finds the shim, which then calls the installer to
+bootstrap the real binary. The shim at pos 10 is the last-resort
+fallback; real binaries at `/usr/bin` (apk/apt installs) or
+`/usr/share/mise/bin` (host-staged mise) win earlier in PATH.
+
+The **`add-mise` installer** in `use/self-improve/shared-sbin/add-mise`
+is self-bootstrapping: it can fetch the upstream mise release and
+install it itself if neither the host-staged volume nor a previous
+install has mise available. Set `MISE_STAGE_DIR` in the compose
+overlay to control where it installs (`/usr/bin` in native mode,
+`/usr/share/mise/bin` in mise mode).
+
+See `docs/lazy-shims.md` for the shim mechanics, `use/mise/` for
+the host-side mise staging Makefile, and `docs/podman.md` for
+volume and state details.
+
 ## 1. Core Goals
 
 - Manage the lifecycle of multiple AI agents (`goclaw`, `picoclaw`) running in **rootless Podman** containers.

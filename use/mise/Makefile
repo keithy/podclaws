@@ -117,13 +117,26 @@ stage-glibc: ## Stage glibc binary to /srv/auto_mise-glibc/
 	install -d -m 0755 $(GLIBC_VOLUME)/_data/RELEASES/mise/$(VERSION)/$(ARCH)
 	install -m 0755 $(BUILD_DIR)/mise/bin/mise $(GLIBC_VOLUME)/_data/RELEASES/mise/$(VERSION)/$(ARCH)/mise
 
-# ---- Latest symlink (what the add-mise shim could use) ----
+# ---- Latest symlinks ----
+# 1. RELEASES/mise/latest → <VERSION>  (so the shim can walk via the
+#    versioned directory tree)
+# 2. bin/mise → ../RELEASES/mise/latest/aarch64/mise  (so /usr/share/mise/bin/
+#    is a real binary on PATH, no shim copy needed; the add-mise shim
+#    is a one-line passthrough to this)
 
-latest: ## Update 'latest' symlinks in both volumes
-	@echo "  → latest → $(VERSION)"
+latest: ## Update 'latest' symlinks and bin/mise pointer in both volumes
+	@echo "  → $(MUSL_VOLUME)/_data/RELEASES/mise/latest → $(VERSION)"
 	ln -sfn $(VERSION) $(MUSL_VOLUME)/_data/RELEASES/mise/latest
+	@echo "  → $(MUSL_VOLUME)/_data/bin/mise → ../RELEASES/mise/latest/$(ARCH)/mise"
+	install -d -m 0755 $(MUSL_VOLUME)/_data/bin
+	ln -sfn ../RELEASES/mise/latest/$(ARCH)/mise $(MUSL_VOLUME)/_data/bin/mise
+	@echo "  → $(GLIBC_VOLUME)/_data/RELEASES/mise/latest → $(VERSION)"
 	ln -sfn $(VERSION) $(GLIBC_VOLUME)/_data/RELEASES/mise/latest
-	@ls -la $(MUSL_VOLUME)/_data/RELEASES/mise/latest $(GLIBC_VOLUME)/_data/RELEASES/mise/latest
+	@echo "  → $(GLIBC_VOLUME)/_data/bin/mise → ../RELEASES/mise/latest/$(ARCH)/mise"
+	install -d -m 0755 $(GLIBC_VOLUME)/_data/bin
+	ln -sfn ../RELEASES/mise/latest/$(ARCH)/mise $(GLIBC_VOLUME)/_data/bin/mise
+	@ls -la $(MUSL_VOLUME)/_data/bin/mise $(GLIBC_VOLUME)/_data/bin/mise \
+		$(MUSL_VOLUME)/_data/RELEASES/mise/latest $(GLIBC_VOLUME)/_data/RELEASES/mise/latest
 
 # ---- Cleanup ----
 

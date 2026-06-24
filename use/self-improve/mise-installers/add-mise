@@ -1,45 +1,17 @@
 #!/bin/sh
-# add-mise: install mise (https://mise.jdx.dev/) version manager
-# Usage: add-mise [--version]
-#   --version - print the version that would be installed (no install)
+# add-mise: passthrough to the mise binary at /usr/share/mise/bin/mise.
 #
-# Strategy: same as the native installer — copy the mise binary from
-# the docker volume `mise-musl` (mounted at /usr/share/mise/ in the
-# container) to the container's writable layer. The volume's
-# `latest` symlink is managed by use/mise/Makefile (host-side);
-# bumping the mise version on the host updates the symlink, and the
-# next container recreate picks up the new binary without any shim
-# change. Distro-agnostic.
+# That path is a symlink managed by use/mise/Makefile on the host:
+#   /usr/share/mise/bin/mise → ../RELEASES/mise/latest/aarch64/mise
+# which in turn points to /usr/share/mise/RELEASES/mise/<VERSION>/aarch64/mise.
+# Bumping the mise version on the host updates the symlink; this
+# shim never needs to change.
 #
-# mise 2026.6.x is statically linked — no separate lua lib is needed.
-set -e
-
-# Source: the docker volume `mise-musl` (mounted at /usr/share/mise).
-# The `latest` symlink is updated by use/mise/Makefile on the host.
-MISE_SRC=/usr/share/mise/RELEASES/mise/latest/aarch64/mise
-
-# Destination: the container's writable layer.
-MISE_DST=/bin/mise
-
-# Copy the mise binary.
-if [ -f "$MISE_SRC" ] && [ ! -x "$MISE_DST" ]; then
-    sudo cp "$MISE_SRC" "$MISE_DST"
-    sudo chmod +x "$MISE_DST"
-fi
-
-if [ "${1:-}" = "--version" ]; then
-    # Read the version from the `latest` symlink so the UI probe
-    # sees a real version string, not a hardcoded literal.
-    ver=$(readlink /usr/share/mise/RELEASES/mise/latest 2>/dev/null || echo unknown)
-    echo "mise $ver (install via add-mise)"
-    exit 0
-fi
-
-if [ ! -x "$MISE_DST" ]; then
-    echo "add-mise: no mise binary at $MISE_DST" >&2
-    echo "  source: $MISE_SRC" >&2
-    exit 1
-fi
-
-# Exec the installed mise binary.
-exec "$MISE_DST" "$@"
+# mise itself is in the container's PATH (at /usr/share/mise/bin,
+# when +mise-improve.yml is in use) so goclaw's exec.Command("mise", ...)
+# resolves directly without copying. This shim is kept for callers that
+# reach add-mise by name from the installer dir (/usr/local/bin/add-mise).
+#
+# Note: mise 2026.6.x is statically linked, so no separate lua lib is
+# needed.
+exec /usr/share/mise/bin/mise "$@"

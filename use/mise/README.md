@@ -27,7 +27,12 @@ make -C use/mise latest      # update 'latest' symlinks
   from upstream, verify against `SHASUMS256.txt`, extract.
 - `stage-musl` / `stage-glibc` — copy the extracted binary to
   `/srv/auto_mise-{musl,glibc}/_data/RELEASES/mise/<VERSION>/aarch64/mise`.
-- `latest` — update `latest → <VERSION>` symlinks in both volumes.
+- `latest` — update two symlinks per volume:
+  - `RELEASES/mise/latest → <VERSION>` (so anything that walks the
+    versioned directory tree picks up the new version)
+  - `bin/mise → ../RELEASES/mise/latest/aarch64/mise` (so
+    `/usr/share/mise/bin/mise` is a real binary on PATH; the
+    `add-mise` shim is a one-line `exec` passthrough)
 - `all` — runs the four above.
 - `clean` — remove `build/` artifacts.
 
@@ -59,14 +64,26 @@ a side-staged lua lib on Alpine; this is no longer required.
 ## Layout after `make all`
 
 ```
-/srv/auto_mise-musl/_data/RELEASES/
-├── mise/2026.6.13/aarch64/mise        # the musl binary
-└── mise/latest → 2026.6.13
+/srv/auto_mise-musl/_data/
+├── bin/mise → ../RELEASES/mise/latest/aarch64/mise    # the binary on PATH
+└── RELEASES/
+    └── mise/
+        ├── 2026.6.13/aarch64/mise
+        ├── 2025.8.20/aarch64/mise
+        └── latest → 2026.6.13
 
-/srv/auto_mise-glibc/_data/RELEASES/
-├── mise/2026.6.13/aarch64/mise        # the glibc binary
-└── mise/latest → 2026.6.13
+/srv/auto_mise-glibc/_data/
+├── bin/mise → ../RELEASES/mise/latest/aarch64/mise
+└── RELEASES/
+    └── mise/
+        ├── 2026.6.13/aarch64/mise
+        ├── 2025.8.20/aarch64/mise
+        └── latest → 2026.6.13
 ```
+
+Inside the goclaw container (with `+mise-improve.yml` mounted), these become
+`/usr/share/mise/bin/mise` and `/usr/share/mise/RELEASES/mise/<VERSION>/aarch64/mise`.
+The `add-mise` shim is a one-line `exec` of the former.
 
 ## See also
 

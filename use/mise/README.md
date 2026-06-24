@@ -1,8 +1,22 @@
-# use/mise — upstream mise binary staging
+# use/mise — upstream mise binary staging (host-side)
 
-Fetches prebuilt mise binaries from `jdx/mise` GitHub releases and stages them
-under the goclaw podman volumes so the `add-mise` shim inside the container
-can copy them out to `/bin/mise`.
+Pre-fetches the upstream mise prebuilt binaries and stages them to the
+`/srv/auto_mise-{musl,glibc}/_data/RELEASES/mise/<v>/aarch64/mise` paths
+on the host. The goclaw container's `add-mise` shim reads from those paths
+via the `mise-musl` / `mise-glibc` named volumes bind-mounted at
+`/usr/share/mise`.
+
+**The shim is self-bootstrapping** — it can also fetch and install mise
+itself on first use if the volume is empty. This Makefile is the
+host-side shortcut: pre-stage once on the host, no per-container network.
+
+## When to use
+
+- **Production / multi-host**: run `make` on each host. One download,
+  many containers, no network in containers.
+- **Dev / single-host**: skip `make`. The shim will fetch on first
+  use. Subsequent runs are fast (cached on the container's writable
+  layer at `/usr/share/mise/bin/mise` or `/usr/local/bin/mise`).
 
 ## Quick start
 
@@ -18,7 +32,7 @@ make -C use/mise fetch-musl
 make -C use/mise fetch-glibc
 make -C use/mise stage-musl
 make -C use/mise stage-glibc
-make -C use/mise latest      # update 'latest' symlinks
+make -C use/mise latest      # update 'latest' symlinks and bin/mise pointer
 ```
 
 ## Targets
@@ -53,7 +67,7 @@ just with different filenames:
 The tarball extracts to `mise/bin/mise` in both cases. Upstream uses
 `arm64` in the URL; we use `aarch64` in the staging path to match the
 existing `/srv/auto_mise-*/_data/RELEASES/mise/.../aarch64/` layout and
-the `add-mise` shim's hardcoded path.
+the `add-mise` shim's path.
 
 ## Statically linked — no lua lib
 
@@ -83,7 +97,8 @@ a side-staged lua lib on Alpine; this is no longer required.
 
 Inside the goclaw container (with `+mise-improve.yml` mounted), these become
 `/usr/share/mise/bin/mise` and `/usr/share/mise/RELEASES/mise/<VERSION>/aarch64/mise`.
-The `add-mise` shim is a one-line `exec` of the former.
+The `add-mise` shim is a one-line `exec` of the former (or a bootstrap
+that re-fetches if the bind-mount is empty).
 
 ## See also
 
@@ -92,3 +107,4 @@ The `add-mise` shim is a one-line `exec` of the former.
 - `use/self-improve/mise-installers/add-mise` — mise-overlay shim
 - `zfs/+zfs.yml` — bind-mount that exposes `/srv/auto_mise-*` into the
   container at `/usr/share/mise`
+

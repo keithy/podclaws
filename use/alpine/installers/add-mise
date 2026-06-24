@@ -3,28 +3,28 @@
 # Usage: add-mise [--version]
 #   --version - print the version that would be installed (no install)
 #
-# Strategy: read the mise binary and lua 5.1 lib from the docker
-# volume `mise-musl` (mounted at /usr/share/mise/ in the container).
-# Install to the container's writable layer:
-#   - /bin/mise               (so which mise returns /bin/mise)
-#   - /usr/lib/liblua.so.5.1.5 + /usr/lib/liblua.so.5 symlink
+# Strategy: read the mise binary from the docker volume `mise-musl`
+# (mounted at /usr/share/mise/ in the container). The volume's
+# `latest` symlink is managed by use/mise/Makefile (host-side); bumping
+# the mise version on the host updates the symlink, and the next
+# container recreate picks up the new binary without any shim change.
 #
-# The staging binaries in /usr/share/mise/RELEASES/ are read-only from
-# this script's perspective. We copy OUT of the volume to the
-# container's own filesystem (/bin/, /usr/lib/).
+# Install to the container's writable layer:
+#   - /bin/mise   (so which mise returns /bin/mise)
 #
 # /bin/mise is wiped on podman compose down (writable layer gone), so
 # add-mise re-runs on every container recreate. /bin is the same place
 # where /bin/goclaw is bind-mounted, keeping mise and goclaw together.
+#
+# mise 2026.6.x is statically linked — no separate lua lib is needed.
 set -e
 
 # Source: the docker volume `mise-musl` (mounted at /usr/share/mise).
-MISE_SRC=/usr/share/mise/RELEASES/mise/2025.8.20/aarch64/mise
-LUA_SRC=/usr/share/mise/RELEASES/lua/5.1.5/aarch64/liblua.so.5.1.5
+# The `latest` symlink is updated by use/mise/Makefile on the host.
+MISE_SRC=/usr/share/mise/RELEASES/mise/latest/aarch64/mise
 
 # Destination: the container's writable layer.
 MISE_DST=/bin/mise
-LUA_DST=/usr/lib/liblua.so.5.1.5
 
 # Copy the mise binary. /bin is the container's image filesystem
 # (writable via root, not a volume mount). sudo needed for write access.
@@ -33,16 +33,11 @@ if [ -f "$MISE_SRC" ] && [ ! -x "$MISE_DST" ]; then
     sudo chmod +x "$MISE_DST"
 fi
 
-# Copy the lua 5.1 library and symlink. /usr/lib is the container's
-# writable layer too — wiped on podman compose down. Re-create on
-# every call to add-mise.
-if [ -f "$LUA_SRC" ]; then
-    sudo cp "$LUA_SRC" "$LUA_DST"
-    sudo ln -sf liblua.so.5.1.5 /usr/lib/liblua.so.5
-fi
-
 if [ "${1:-}" = "--version" ]; then
-    echo "mise 2025.8.20 (install via add-mise)"
+    # Read the version from the `latest` symlink so the UI probe
+    # sees a real version string, not a hardcoded literal.
+    ver=$(readlink /usr/share/mise/RELEASES/mise/latest 2>/dev/null || echo unknown)
+    echo "mise $ver (install via add-mise)"
     exit 0
 fi
 

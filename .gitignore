@@ -2,6 +2,9 @@
 testdata/
 backup/
 
+# Build artifacts
+use/mise/build/
+
 # Binary
 openclaw-go
 pkg-helper

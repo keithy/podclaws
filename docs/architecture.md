@@ -1,139 +1,118 @@
-# Podclaws Architecture
+# Podclaw Architecture
 
 This document provides a high-level overview of the Podclaws architecture. 
 The goal is to provide a basis for both experimentation and production deployment. 
-The distinguishing podclaw features are orthogonal to and useful for many agentic frameworks. 
+The distinguishing podclaw features are orthogonal to and useful for many agentic
+frameworks. 
 
-## Multiple Agentic Frameworks
+## Overview
+
+### Data-Context-Interaction - like - Architecture
+
+*credit - Trygve Reenskaug*
+
+**Data** is mapped into a container, selected by the agentic framework, per-tennant,
+per-user, per-chat-topic etc. While OpenClaw like agentic frameworks are built by
+and for one user podclaw supports multi-channel operation out of the box.
+
+Each agent chooses an activity based upon the data and input from its personality,
+knowledge, memory, or skills. A working directory will form the assembled 
+**context** for this activity. Within this **Context** the agent will provide a
+definition of what specific tools (and versions of tools) are needed for the task. 
+A library of (lazily) pre-installed tools is available to the container.
+
+Agents perform their roles scoped within the container which provides
+the venue for **Interaction**.
+
+### Multiple Agentic Frameworks
 
 A secure containerised architecture that efficiently supports multiple agentic frameworks.
 e.g. goclaw, picoclaw, Pi
 
 Local agent executable builds are explicitly decoupled from the deployment environment and
-are published to `./RELEASES/<name>/<version>/<binary>` and mapped into containers from there
+are published to the host and mapped into containers from there.
 
-## Rootless Podman
+A deployed system can live-track new-releases in `./RELEASES/<name>/latest/<binary>`
 
-Rootless Podman, is the deployment runtime supported here, and it provides
+### Rootless Podman
+
+Rootless Podman, is the deployment runtime supported here; it provides
 single-node support for both podman-compose, and kubernetes configurations.
 
 Podclaws uses `podman compose`, as an evolutionary step towards using kubernetes for
-production deployments. (podman directly generates kubernetes manifests from podman compose)
+production deployments. (`podman` directly generates kubernetes manifests from podman compose)
 
-## Self-Improving Minimal Containers
+### Composable Features
 
-The **self-improve** feature lets any agent start with any miminal image and
+`podclaw` is explicitly designed to support composeable features. The deployment can select which 
+features and services are required. For example, `service.redis.yml` is optional.
+
+### Composable Feature - Self-Improving Minimal Containers
+
+The **self-improve** composable-feature lets any agent start with any miminal image and
 install their own tools on demand. There are two options, 1) tools in-container,
-and 2) tools in library
+and 2) tools in a shared library
 
 - **`+self-improve.yml`** — apk (Alpine) or apt (Debian) for everything
-  Python, Node, Go, etc. come from the OS package manager. The base
-  image is minimal; the agent gets the OS-shipped versions. **State
-  is persisted by committing the image** (`on-host-commit`)
-  — the apk/apt installs land in the container's read-write layer and
-  survive across `podman compose down/up` if the image is committed.
+  Python, Node, Go, etc. using the OS package manager, or
+  venv support using `mise-en-place`. The base
+  image is minimal; the agent installs what it needs and 
+  **State is persisted by committing the image** (the command: `on-host-commit`)
+  — the apk/apt/mise installs land in the container's read-write layer and
+  survive across `podman compose down/up` IFF the image is committed.
 
 - **`+mise-improve.yml`** — mise for language runtimes (python, node,
-  go), with apk/apt as fallback for system tools (bash, git, etc.).
-  **State has two halves**: language runtimes and downloads live in
-  **the `mise-{musl,glibc}` shared volumes** (host-side, persistent
-  across container recreates without committing); local config and
-  mise-managed tools land in the container's writable layer and
-  **need `podman commit` to persist**.
+  go), language runtimes and downloads live in
+  **the `mise-{musl,glibc}` shared volumes** (host-side, mostly persistent
+  across container recreates without committing)
 
-Both overlays mount the same shared shim layer at `/usr/local/sbin/`
-(thin wrappers in `use/self-improve/shared-sbin/`) and an installer
-dir at `/usr/local/bin/` (the `add-python`, `add-node`, etc. scripts).
+### Tools Library
+
+- Having one library of tools of various versions shared among containers,
+  projects, dev-containers, developer-workspaces is made possible using
+  a tool like `mise-en-place`. This strategy keeps the containers themselves
+  minimal, encouraging the use of multiple sandboxes.
+
+### Lazy-shims
+
+"Fake it till you make it!" - We fool gateways that may expect a fully tool-loaded
+context into working with minimal containers using a shim layer at `/usr/local/sbin/`. 
+These thin wrappers call installers on-demand.
+
 When goclaw's hardcoded `exec.Command("python", ...)` runs, the shell
-walks PATH, finds the shim, which then calls the installer to
-bootstrap the real binary. The shim at pos 10 is the last-resort
-fallback; real binaries at `/usr/bin` (apk/apt installs) or
-`/usr/share/mise/bin` (host-staged mise) win earlier in PATH.
+walks PATH, finds the shim as a last-resort fallback, which then calls
+an installer `add-python` to bootstrap the real binary which lands earlier
+on the path, effectivly replacing the shim.
 
-To persist the container's state across recreates, run
-`on-host-commit` from inside the container. That queues a host-side
-`podman commit` via the sensible task queue, captures the read-write
-layer as `localhost/goclaw:<tag>`, and restarts the container with
-the new image. The `on-host-podman` and `on-host-sensible-do`
-sidecar scripts are the underlying mechanism; `on-host-commit` is the
-one-stop entry point.
+### add-mise
 
-The **`add-mise` installer** in `use/self-improve/shared-sbin/add-mise`
-is self-bootstrapping: it can fetch the upstream mise release and
-install it itself if neither the host-staged volume nor a previous
-install has mise available. Set `MISE_STAGE_DIR` in the compose
-overlay to control where it installs (`/usr/bin` in native mode,
-`/usr/share/mise/bin` in mise mode).
+The **`/usr/local/sbin/add-mise` installer** is self-bootstrapping: it can
+fetch the upstream mise release and install it itself if not already available. 
 
-See `docs/lazy-shims.md` for the shim mechanics, `use/mise/` for
-the host-side mise staging Makefile, and `docs/podman.md` for
-volume and state details.
+### Container to Host Actions
 
-## 1. Core Goals
+To persist the container's state across recreates, run `on-host-commit`
+from inside the container. That queues a host-side `podman commit` via
+the sensible task queue, captures the read-write layer as `localhost/goclaw:next`.
+
+## Core Goals
 
 - Manage the lifecycle of multiple AI agents (`goclaw`, `picoclaw`) running in **rootless Podman** containers.
-- Allow agents to install their own tools and dependencies dynamically, without baking them into base images.
-- Strictly isolate the host from the containers, and the container from the agent's environment.
+- Allow agents to self-improve and install their own tools and dependencies dynamically, without baking them into base images.
+- Containers, for work isolation and sandboxing.
+- Minimal Dockerfiles policy (use buildah in preference)
+- A unified system for managing tools (Python, Node, Deno, Go etc.), per project/task inside the containers.
+- Universal support for virtual environments for all tooling (not just python venv).
+- **No Base Bloat**: By default base images only contain the bare minimum (`ca-certificates`, `sudo`, `curl`).
+- **Lazy Bootstrapping**: tool use can self-fulfil, via shims mechanism.
+- Option of native or `mise` managed tools
+- Agent and skills that understand this system to provide self-management.
+- ZFS backend filesystem for data integrity to guard against 'AI mistakes' (low-level snapshot every 15 minutes)
+- Postgres data store, as a core feature and resource.
+- Shared library of installed tools in a cluster mountable volume. (for multiple uses, including developer workspaces)
+- Project-Level tool configuration - agents or users define `<project>/mise/config.toml`.
 
-## 2. The Hybrid Lazy Shim Architecture
-
-A unified system for managing Python, Node, Deno, Go, and other runtimes inside the containers:
-
-- **No Base Bloat**: Base images only contain the bare minimum (`ca-certificates`, `sudo`, `wget`).
-- **Lazy Bootstrapping**: When an agent requests a tool (e.g., `python`), the OS `PATH` routes the call to a shim in `/usr/local/sbin/`.
-- **On-Demand Installation**: The shim invokes `mise` to install the tool globally (`mise use -g python@latest`) using the persisted data directory.
-- **Native Handover**: `mise` automatically generates its own shims in the ephemeral directory, which take priority on the `PATH` for all subsequent calls.
-
-## 3. Persistence: podman commit + named volumes
-
-Two complementary mechanisms:
-
-- **Image read-write layer (podman commit)** — `apk add` / `apt-get install`
-  packages land in the image's read-write layer. To persist, commit the
-  running container: `podman commit <ctr> localhost/goclaw:current-improved`,
-  then update the service's `image:` line. Used by both
-  `+self-improve.yml` (native, apk/apt) and `+mise-improve.yml` (mise falls
-  back to apk/apt for system tools).
-
-- **Named volumes (mise only)** — when the mise overlay is in play, two
-  named podman volumes are declared:
-  - `mise-musl` mounted at `/usr/share/mise` — holds the prebuilt mise
-    binary, lua 5.1 library, and per-version language installs
-    (`installs/python/3.12.13/...`, `installs/node/24.14.1/...`, etc.).
-  - `mise-cache` mounted at `/app/.cache/mise` — holds downloaded tarballs,
-    wheels, and source files for cache hits across versions and containers.
-
-  These volumes survive `podman compose down` and `podman rm`. The next
-  container that needs `python@3.12.13` finds it already extracted and
-  skips the download/extract step. Named volumes are also
-  architecture-/libc-specific: do not share a `mise-musl` volume between
-  musl (Alpine) and glibc (Debian, RHEL) containers.
-
-  The shim layer at `/usr/local/sbin/` is **ephemeral** — re-applied by
-  the compose overlay on every container start. This is intentional: a
-  clean shim layer ensures fresh boots start with a predictable `PATH`.
-
-See [docs/lazy-shims.md](lazy-shims.md#state-saving-podman-interface-vs-on-disk-cache)
-for the full state-saving model and decision guide for which overlay to
-pick.
-
-## 4. Host Setup (Multi-User Shared Cache) — future work
-
-The original design placed `MISE_DATA_DIR=/srv/auto_mise-glibc/_data` on the
-host so multiple host users could share heavy toolchains via ZFS, with
-per-user shims under `~/.local/share/mise/shims`. The current podclaws
-deployment does not use this layout — named volumes are per-host and
-shared at the podman level, not at the user level. Multi-user host
-sharing is documented here for reference but is not currently wired up;
-the actual host configuration is whatever the developer chooses for
-their local mise install.
-
-## 5. Project-Level Configurations
-
-- Agents (or users) define project-specific tool versions in `<project>/mise/config.toml`.
-- Local configurations take priority over the global fallbacks.
-
-## 6. Secure Host Communication (Sensible)
+### Secure Host Communication (Sensible)
 
 - AI agents inside the container use `sensible` to queue and execute validated `execlineb` scripts on the host, eliminating the need for direct shell or SSH access from the container to the host. The host defines a very restricted whitelist of valid actions.
 

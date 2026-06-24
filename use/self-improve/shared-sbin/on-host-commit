@@ -1,10 +1,10 @@
 #!/bin/sh
 # on-host-commit - persist the container's state by committing the image.
 #
-# Wraps on-host-podman commit_and_switch. The agent calls this from
-# inside the container; the actual podman commit runs on the host
-# (via the sensible task queue), then the container restarts with
-# the new image.
+# The agent calls this from inside the container; the actual podman
+# commit runs on the host (via the sensible task queue). The container
+# is NOT restarted by this command — use `on-host-podman restart` (or
+# `commit_and_switch`) if you also want the new image activated.
 #
 # Usage: on-host-commit [tag]
 #   tag: image tag to commit as (default: next)
@@ -14,15 +14,15 @@
 #   2. Agent runs `on-host-commit`
 #   3. The host's sensible process picks up the queued task, runs
 #      `podman commit` to capture the container's read-write layer
-#      into a new image, and restarts the container with the new image.
-#   4. The new image is now localhost/goclaw:<tag>; rebuild the
-#      service image with `make -C use/goclaw image` to bake it in.
+#      into a new image, `localhost/goclaw:<tag>`.
+#   4. The new image is now available as a tag. To activate it, run
+#      `on-host-podman restart` (or `commit_and_switch` to do
+#      commit + restart in one step).
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TAG="${1:-next}"
 
-# Delegate to on-host-podman commit_and_switch. That script queues a
-# sensible task that the host runs; the task does the actual podman
-# commit + rmi + tag + restart sequence.
-exec "$SCRIPT_DIR/on-host-podman" commit_and_switch "$TAG"
+# Delegate to on-host-podman commit. That script queues a sensible
+# task that the host runs; the task does the actual podman commit.
+exec "$SCRIPT_DIR/on-host-podman" commit "$TAG"

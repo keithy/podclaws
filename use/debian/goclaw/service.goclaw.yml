@@ -12,6 +12,8 @@
 services:
   goclaw:
     image: localhost/goclaw-debian:current
+    build:
+      context: ${GOCLAW_DIR}/../use/debian/goclaw
 
     command: ["/bin/goclaw"]
 

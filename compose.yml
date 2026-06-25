@@ -1,5 +1,5 @@
 # Podclaws root compose — services defined in use/ directory
-# This file provides the network config.
+# This file provides the network config and shared named volumes.
 
 volumes:
   mise-musl:
@@ -8,6 +8,4 @@ volumes:
 
 networks:
   default:
-    driver: bridge
-  goclaw-net:
     driver: bridge

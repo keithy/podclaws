@@ -42,9 +42,10 @@ is_compose_file() {
 }
 
 # Categorize a compose file by filename only
-# . = service, + = overlay, otherwise = root
+# ~ = post-overlay (final, applied last), + = overlay, . = service, else root
 categorize_compose() {
   local name="${1%.yml}"
+  [[ "$name" == *~* ]] && echo "post" && return
   [[ "$name" == *+* ]] && echo "overlay" && return
   [[ "$name" == *.* ]] && echo "service" && return
   echo "root"
@@ -87,7 +88,7 @@ do_generate() {
   echo "# Remove # to enable a file"
   echo ""
 
-  local roots="" services="" overlays=""
+  local roots="" services="" overlays="" posts=""
 
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
@@ -102,6 +103,7 @@ do_generate() {
         root) roots="${roots}${roots:+$'\n'}${enabled}${rel}" ;;
         service) services="${services}${services:+$'\n'}${enabled}${rel}" ;;
         overlay) overlays="${overlays}${overlays:+$'\n'}${enabled}${rel}" ;;
+        post) posts="${posts}${posts:+$'\n'}${enabled}${rel}" ;;
       esac
     fi
   done < <(find_compose_files "$PROJECT_ROOT")
@@ -119,6 +121,11 @@ do_generate() {
   if [[ -n "$overlays" ]]; then
     echo "# === OVERLAY (optional) ==="
     echo "$overlays"
+    echo ""
+  fi
+  if [[ -n "$posts" ]]; then
+    echo "# === POST-OVERLAY (final, applied last) ==="
+    echo "$posts"
   fi
 }
 

@@ -1,0 +1,8 @@
+
+# Goclaw service support build so this is no longer needed
+
+services:
+  goclaw:
+    build:
+      args: !reset ''
+    

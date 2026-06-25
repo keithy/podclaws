@@ -1,8 +1,8 @@
-# Podclaw Architecture
+# Podclaws Architecture
 
 This document provides a high-level overview of the Podclaws architecture. 
 The goal is to provide a basis for both experimentation and production deployment. 
-The distinguishing podclaw features are orthogonal to and useful for many agentic
+The distinguishing podclaws features are orthogonal to and useful for many agentic
 frameworks. 
 
 ## Overview
@@ -13,11 +13,11 @@ frameworks.
 
 **Data** is mapped into a container, selected by the agentic framework, per-tennant,
 per-user, per-chat-topic etc. While OpenClaw like agentic frameworks are built by
-and for one user podclaw supports multi-channel operation out of the box.
+and for one user podclaws is designed to support multi-channel operation.
 
 Each agent chooses an activity based upon the data and input from its personality,
 knowledge, memory, or skills. A working directory will form the assembled 
-**context** for this activity. Within this **Context** the agent will provide a
+**context** for this activity. Within this **Context** the agent will have a
 definition of what specific tools (and versions of tools) are needed for the task. 
 A library of (lazily) pre-installed tools is available to the container.
 
@@ -61,7 +61,7 @@ and 2) tools in a shared library
   — the apk/apt/mise installs land in the container's read-write layer and
   survive across `podman compose down/up` IFF the image is committed.
 
-- **`+mise-improve.yml`** — mise for language runtimes (python, node,
+- **`+mise-improve.yml`** — mise for everything - language runtimes (python, node,
   go), language runtimes and downloads live in
   **the `mise-{musl,glibc}` shared volumes** (host-side, mostly persistent
   across container recreates without committing)
@@ -77,7 +77,7 @@ and 2) tools in a shared library
 
 "Fake it till you make it!" - We fool gateways that may expect a fully tool-loaded
 context into working with minimal containers using a shim layer at `/usr/local/sbin/`. 
-These thin wrappers call installers on-demand.
+These thin wrappers do answer to `--version` and call installers on-demand.
 
 When goclaw's hardcoded `exec.Command("python", ...)` runs, the shell
 walks PATH, finds the shim as a last-resort fallback, which then calls
@@ -93,7 +93,12 @@ fetch the upstream mise release and install it itself if not already available.
 
 To persist the container's state across recreates, run `on-host-commit`
 from inside the container. That queues a host-side `podman commit` via
-the sensible task queue, captures the read-write layer as `localhost/goclaw:next`.
+the sensible task queue, which atomically:
+1. Snapshots `:current` → `:previous` (rollback anchor).
+2. Captures the container's read-write layer directly as the new `:current`.
+
+After the commit, `podman compose down && up` launches the new `:current`.
+Roll back with `on-host-podman switch previous`.
 
 ## Core Goals
 
@@ -107,12 +112,13 @@ the sensible task queue, captures the read-write layer as `localhost/goclaw:next
 - **Lazy Bootstrapping**: tool use can self-fulfil, via shims mechanism.
 - Option of native or `mise` managed tools
 - Agent and skills that understand this system to provide self-management.
-- ZFS backend filesystem for data integrity to guard against 'AI mistakes' (low-level snapshot every 15 minutes)
+- ZFS backend filesystem for data integrity to guard against 'AI mistakes' (system-wide snapshot every 15 minutes)
 - Postgres data store, as a core feature and resource.
 - Shared library of installed tools in a cluster mountable volume. (for multiple uses, including developer workspaces)
 - Project-Level tool configuration - agents or users define `<project>/mise/config.toml`.
+- Communication and management of infrastructure aim to support high levels of abstraction (e.g. wings lang) 
 
-### Secure Host Communication (Sensible)
+## Secure Container - Host Communication (Sensible)
 
 - AI agents inside the container use `sensible` to queue and execute validated `execlineb` scripts on the host, eliminating the need for direct shell or SSH access from the container to the host. The host defines a very restricted whitelist of valid actions.
 

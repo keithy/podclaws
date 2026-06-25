@@ -37,6 +37,12 @@ volumes:
     target: /var/lib/postgresql/data
     bind:
       create_host_path: false
+  redis-data:
+    type: bind
+    source: /srv/auto_redis-data/_data
+    target: /data
+    bind:
+      create_host_path: false
   mise-musl:
     type: bind
     source: /srv/auto_mise-musl/_data
@@ -47,5 +53,19 @@ volumes:
     type: bind
     source: /srv/auto_mise-cache/_data
     target: /app/.cache/mise
+    bind:
+      create_host_path: false
+  # Shared misc volume for optional services (jaeger, future tools, etc.).
+  # Bind-mounts the host's misc ZFS dataset (/srv/auto_misc/_data) into
+  # containers at /var/lib/misc. Services may either:
+  #   - mount the whole /var/lib/misc (this declaration)
+  #   - bind a specific subdir directly, e.g.
+  #     ${MISC_HOST_PATH:-/srv/auto_misc/_data}/<service>:/var/lib/<service>
+  # Both work; the second is preferred when a service needs its own
+  # subdir to avoid colliding with siblings sharing the volume.
+  misc:
+    type: bind
+    source: /srv/auto_misc/_data
+    target: /var/lib/misc
     bind:
       create_host_path: false

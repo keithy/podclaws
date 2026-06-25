@@ -17,67 +17,62 @@ When you run installers or make changes inside the container, you can use these 
 
 ## Scripts
 
+All commands queue a task for the host's `sensible-consume` to execute; they
+return immediately. The container is **not restarted** by `commit` itself —
+run `podman compose down && up` (or `on-host-podman restart`) afterwards to
+launch the new `:current`.
+
 ### Committing Changes
 
 ```bash
-# Commit current container state as a named image
-# Tag defaults to "next"
-on-host-podman commit <container> [tag]
+# Atomic commit. Snapshots :current → :previous, then captures the
+# container's read-write layer directly as the new :current image.
+on-host-podman commit
+```
+
+Equivalent one-liner used by the agent:
+```bash
+on-host-commit   # just calls `on-host-podman commit`
+```
+
+### Switching to an Existing Tag
+
+```bash
+# Promote an existing tag (e.g. :previous, :base) to :current.
+on-host-podman switch <tag>
 ```
 
 Example:
 ```bash
-on-host-podman commit mycontainer my-feature
-# Creates: localhost/goclaw:my-feature
-```
-
-### Switch Versions
-
-```bash
-# Switch container to use a different image tag, then restart
-# Tag defaults to "next"
-on-host-podman switch <container> [tag]
-```
-
-Example:
-```bash
-on-host-podman switch mycontainer previous
-# Tags :previous as :current and restarts
-```
-
-### Commit and Switch Atomically
-
-```bash
-# Commit and immediately switch in one atomic operation
-# Tag defaults to "next"
-on-host-podman commit_and_switch <container> [tag]
+on-host-podman switch previous
+# Snapshots :current → :previous, then tags :previous → :current.
 ```
 
 ### Just Restart
 
 ```bash
 # Restart container without changing image
-on-host-podman restart <container>
+on-host-podman restart
 ```
 
 ### Reset to Base
 
 ```bash
-# Reset container to base image and restart
-on-host-podman reset_and_switch <container>
+# Roll :current back to :base and restart
+on-host-podman reset_and_switch
 ```
-
-This saves current → previous, tags :base → :current, then restarts.
 
 ## Image Tags
 
 | Tag | Purpose |
 |-----|---------|
-| `base` | Original alpine image (reset target) |
-| `current` | The image currently running |
-| `previous` | The image before last switch |
-| `next` | Default tag for commits |
-| custom | Any name you choose (e.g., `my-feature`) |
+| `base` | Build-time anchor (set by `make image`; reset target) |
+| `current` | The image launched by `podman compose up`; updated on every commit |
+| `previous` | One-step rollback target (snapshot of `:current` at each commit) |
+
+`commit` writes **directly** to `:current`. No intermediate `:next` tag — the
+atomic dance (rmi `:previous`, tag `:current` → `:previous`, commit) keeps the
+running image and the rollback anchor consistent.
 
 ## Workflow Examples
 
@@ -90,26 +85,56 @@ apk add --no-cache newpackage
 # 2. Test changes
 # (run the relevant tests in tests/ — e.g. ./tests/on-host-sensible-do_spec.sh)
 
-# 3. If happy, commit
-on-host-podman commit mycontainer feature-x
+# 3. Commit atomically — :current now reflects the new state
+on-host-podman commit
 
-# 4. If it works, switch to it
-on-host-podman switch mycontainer feature-x
+# 4. Restart to launch the new :current
+podman compose -f <stack> down && podman compose -f <stack> up -d
 
 # 5. If broken, roll back
-on-host-podman switch mycontainer previous
+on-host-podman switch previous
+podman compose -f <stack> down && podman compose -f <stack> up -d
 ```
 
 ### Testing Before Switching
 
+Use `switch` to promote an existing tag (e.g. one you built locally and
+tagged as `:test-version`):
+
 ```bash
-# Commit but don't switch
-on-host-podman commit mycontainer test-version
+# Promote a tagged image to :current
+on-host-podman switch test-version
+podman compose -f <stack> down && podman compose -f <stack> up -d
 
 # ... test the version ...
 
-# Only switch if tests pass
-on-host-podman switch mycontainer test-version
+# Roll back
+on-host-podman switch previous
+podman compose -f <stack> down && podman compose -f <stack> up -d
+```
+
+### Testing Before Switching
+
+Use `switch` to promote an existing tag (e.g. one you built locally and
+tagged as `:test-version`):
+
+```bash
+# Promote a tagged image to :current
+on-host-podman switch test-version
+podman compose -f <stack> down && podman compose -f <stack> up -d
+
+# ... test the version ...
+
+# Roll back
+on-host-podman switch previous
+podman compose -f <stack> down && podman compose -f <stack> up -d
+```
+
+### Bulk Reset
+
+```bash
+# Roll back to the build-time :base image (e.g. from `make image`)
+on-host-podman reset_and_switch
 ```
 
 ## How It Works

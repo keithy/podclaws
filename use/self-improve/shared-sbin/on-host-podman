@@ -1,10 +1,16 @@
 #!/bin/sh
 # on-host-podman - queue podman host commands via the sensible task queue.
 # Usage: on-host-podman <command> [args]
-# Commands: commit, commit_and_switch, switch, restart, reset_and_switch
+# Commands: commit, switch, restart, reset_and_switch
 #
 # The actual podman command runs on the host (via the sensible
 # protocol); the agent calls this from inside the container.
+#
+# Tag semantics:
+#   :current   the image launched by `podman compose up` (the live target)
+#   :previous  one-step rollback target (snapshot of :current at each commit)
+#   :base      build-time anchor for reset (set by `make image`; NEVER
+#              overwritten at runtime)
 
 set -euo pipefail
 
@@ -13,42 +19,42 @@ CONTAINER=$(hostname)
 
 CMD="${1?Usage: on-host-podman <command>}"
 shift
-TAG="${1:-next}"
 
 case "$CMD" in
   commit)
-    "$SCRIPT_DIR/on-host-sensible-do" \
-      "podman commit $CONTAINER localhost/goclaw:$TAG"
-    ;;
-  commit_and_switch)
+    # Atomic commit (no restart):
+    #   1. rmi :previous                    (clear old rollback target)
+    #   2. tag :current → :previous         (snapshot current as rollback)
+    #   3. podman commit container → :current (capture read-write layer)
+    # Run `podman compose down && up` (or `on-host-podman restart`) to
+    # activate the new :current.
     "$SCRIPT_DIR/on-host-sensible-do" \
       'if { podman rmi localhost/goclaw:previous } true' \
       'if { podman tag localhost/goclaw:current localhost/goclaw:previous } true' \
-      "podman commit $CONTAINER localhost/goclaw:$TAG" \
-      "if { podman tag localhost/goclaw:$TAG localhost/goclaw:current } true" \
-      'podman restart $CONTAINER'
+      "podman commit $CONTAINER localhost/goclaw:current"
     ;;
   switch)
+    # Promote an existing tag to :current without committing.
+    TAG="${1:?Usage: on-host-podman switch <tag>}"
     "$SCRIPT_DIR/on-host-sensible-do" \
       'if { podman rmi localhost/goclaw:previous } true' \
       'if { podman tag localhost/goclaw:current localhost/goclaw:previous } true' \
-      "if { podman tag localhost/goclaw:$TAG localhost/goclaw:current } true" \
-      'podman restart $CONTAINER'
+      "if { podman tag localhost/goclaw:$TAG localhost/goclaw:current } true"
     ;;
   restart)
-    "$SCRIPT_DIR/on-host-sensible-do" 'podman restart $CONTAINER'
+    "$SCRIPT_DIR/on-host-sensible-do" "podman restart $CONTAINER"
     ;;
   reset_and_switch)
-    # Reset to base image and restart
+    # Roll :current back to :base and restart.
     "$SCRIPT_DIR/on-host-sensible-do" \
       'if { podman rmi localhost/goclaw:previous } true' \
       'if { podman tag localhost/goclaw:current localhost/goclaw:previous } true' \
       'if { podman tag localhost/goclaw:base localhost/goclaw:current } true' \
-      'podman restart $CONTAINER'
+      "podman restart $CONTAINER"
     ;;
   *)
     echo "Unknown command: $CMD" >&2
-    echo "Usage: on-host-podman <commit|commit_and_switch|switch|restart|reset_and_switch> [tag]" >&2
+    echo "Usage: on-host-podman <commit|switch|restart|reset_and_switch> [tag]" >&2
     exit 1
     ;;
 esac

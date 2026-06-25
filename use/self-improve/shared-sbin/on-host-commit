@@ -3,26 +3,20 @@
 #
 # The agent calls this from inside the container; the actual podman
 # commit runs on the host (via the sensible task queue). The container
-# is NOT restarted by this command — use `on-host-podman restart` (or
-# `commit_and_switch`) if you also want the new image activated.
+# is NOT restarted by this command — run `podman compose down && up`
+# (or `on-host-podman restart`) afterwards to activate the new image.
 #
-# Usage: on-host-commit [tag]
-#   tag: image tag to commit as (default: next)
+# Usage: on-host-commit
 #
 # Workflow:
 #   1. Agent makes changes in the container (apk add, pip install, etc.)
 #   2. Agent runs `on-host-commit`
-#   3. The host's sensible process picks up the queued task, runs
-#      `podman commit` to capture the container's read-write layer
-#      into a new image, `localhost/goclaw:<tag>`.
-#   4. The new image is now available as a tag. To activate it, run
-#      `on-host-podman restart` (or `commit_and_switch` to do
-#      commit + restart in one step).
+#   3. The host's sensible process picks up the queued task and runs an
+#      atomic swap: snapshot :current → :previous, then commit the
+#      container's read-write layer directly into a new :current image.
+#   4. Run `podman compose down && up` to launch the new :current.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-TAG="${1:-next}"
 
-# Delegate to on-host-podman commit. That script queues a sensible
-# task that the host runs; the task does the actual podman commit.
-exec "$SCRIPT_DIR/on-host-podman" commit "$TAG"
+exec "$SCRIPT_DIR/on-host-podman" commit

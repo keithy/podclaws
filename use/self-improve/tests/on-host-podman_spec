@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 #
 # Test for on-host-podman
-# Tests: commit, commit_and_switch, restart, switch, rmi commands
+# Tests: commit, switch, restart, reset_and_switch
 
 . "$(dirname "$0")/lib/bash-spec.sh"
 
 PODMAN_ON_HOST="$(cd "$(dirname "$0")/../shared-sbin" && pwd)/on-host-podman"
-SENSIBLE_ON_HOST_DO="$(cd "$(dirname "$0")/../shared-sbin" && pwd)/on-host-sensible-do"
 TEST_TASKS_DIR="/tmp/test-podman-$$"
 TASKS_PENDING="$TEST_TASKS_DIR/pending"
 
@@ -22,27 +21,27 @@ describe "on-host-podman" && {
     it "queues rmi, tag, and commit tasks" && {
       export HOST_TASKS_DIR="$TEST_TASKS_DIR"
       mkdir -p "$TASKS_PENDING"
-      
-      "$PODMAN_ON_HOST" commit test-container my-tag 2>&1
-      
-      # Should create 3 task files
+
+      "$PODMAN_ON_HOST" commit 2>&1
+
+      # rmi :previous, tag :current → :previous, commit container → :current
       JSON_FILES=("$TASKS_PENDING"/*.json)
       [ ${#JSON_FILES[@]} -eq 3 ]
       should_succeed
     }
   }
 
-  context "2. commit_and_switch command" && {
-    it "queues rmi, tag, commit, and restart tasks" && {
+  context "2. switch command" && {
+    it "queues rmi, tag, and promote tasks" && {
       export HOST_TASKS_DIR="$TEST_TASKS_DIR"
       rm -rf "$TEST_TASKS_DIR"
       mkdir -p "$TASKS_PENDING"
-      
-      "$PODMAN_ON_HOST" commit_and_switch test-container my-tag 2>&1
-      
-      # Should create 4 task files
+
+      "$PODMAN_ON_HOST" switch previous 2>&1
+
+      # rmi :previous, tag :current → :previous, tag :previous → :current
       JSON_FILES=("$TASKS_PENDING"/*.json)
-      [ ${#JSON_FILES[@]} -eq 4 ]
+      [ ${#JSON_FILES[@]} -eq 3 ]
       should_succeed
     }
   }
@@ -52,27 +51,27 @@ describe "on-host-podman" && {
       export HOST_TASKS_DIR="$TEST_TASKS_DIR"
       rm -rf "$TEST_TASKS_DIR"
       mkdir -p "$TASKS_PENDING"
-      
-      "$PODMAN_ON_HOST" restart test-container 2>&1
-      
-      # Should create 1 task file
+
+      "$PODMAN_ON_HOST" restart 2>&1
+
       JSON_FILES=("$TASKS_PENDING"/*.json)
       [ ${#JSON_FILES[@]} -eq 1 ]
       should_succeed
     }
   }
 
-  context "4. rmi command" && {
-    it "queues rmi task" && {
+  context "4. reset_and_switch command" && {
+    it "queues rmi, tag, base-promote, and restart tasks" && {
       export HOST_TASKS_DIR="$TEST_TASKS_DIR"
       rm -rf "$TEST_TASKS_DIR"
       mkdir -p "$TASKS_PENDING"
-      
-      "$PODMAN_ON_HOST" rmi localhost/test:image 2>&1
-      
-      # Should create 1 task file
+
+      "$PODMAN_ON_HOST" reset_and_switch 2>&1
+
+      # rmi :previous, tag :current → :previous, tag :base → :current,
+      # restart
       JSON_FILES=("$TASKS_PENDING"/*.json)
-      [ ${#JSON_FILES[@]} -eq 1 ]
+      [ ${#JSON_FILES[@]} -eq 4 ]
       should_succeed
     }
   }

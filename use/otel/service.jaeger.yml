@@ -18,7 +18,8 @@
 #
 # Persistence: bind-mount /badger to a host directory or ZFS subdir
 # (e.g. /srv/auto_misc/_data/jaeger). Add `-f zfs/+zfs.yml` and the
-# `misc` volume for ZFS-backed persistence.
+# `misc` volume for ZFS-backed persistence. Override the host path
+# via MISC_HOST_PATH if your misc dataset lives elsewhere.
 
 services:
   jaeger:
@@ -28,10 +29,32 @@ services:
       - BADGER_EPHEMERAL=false
       - SPAN_STORAGE_TYPE=badger
     ports:
-      - "16686:16686"   # Jaeger UI
-      - "4317:4317"     # OTLP gRPC
-      - "4318:4318"     # OTLP HTTP
+      - "${JAEGER_UI_PORT:-16686}:16686"      # Jaeger UI
+      - "${JAEGER_OTLP_GRPC_PORT:-4317}:4317" # OTLP gRPC
+      - "${JAEGER_OTLP_HTTP_PORT:-4318}:4318" # OTLP HTTP
+    volumes:
+      # Bind-mount to a subdir of the host's misc ZFS dataset. Set
+      # MISC_HOST_PATH to override (e.g. /srv/auto_misc/_data).
+      # When this bind fails, Jaeger runs ephemeral.
+      - type: bind
+        source: ${MISC_HOST_PATH:-/srv/auto_misc/_data}/jaeger
+        target: /badger
+        bind:
+          create_host_path: false
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:14269/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - default
       - goclaw-net
+    # Jaeger's all-in-one is heavy. Cap resources so it doesn't starve
+    # the goclaw container on small hosts.
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.5'

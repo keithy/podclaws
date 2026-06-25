@@ -23,7 +23,7 @@ multiple services) while the goclaw-side patches stay focused.
 
 | Service file | Overlay file | Backend | RAM | Persistence | UI scope |
 |---|---|---|---|---|---|
-| `service.jaeger.yml` (in `+goclaw-jaeger.yml`) | Jaeger all-in-one | 50–100 MB | BadgerDB (disk) | Traces |
+| `service.jaeger.yml` | `+goclaw-jaeger.yml` | Jaeger all-in-one | 50–100 MB | BadgerDB (disk) | Traces |
 | `service.aspire.yml` | `+goclaw-aspire.yml` | .NET Aspire Dashboard | 40–80 MB | In-memory | Traces + logs + metrics |
 
 ### Which to use?
@@ -39,8 +39,9 @@ Both accept OTLP gRPC on port 4317. Switch between them by changing which
 ## Usage
 
 ```bash
-# Jaeger
+# Jaeger (two-file pattern)
 docker compose -f use/goclaw/service.goclaw.yml \
+               -f use/otel/service.jaeger.yml \
                -f use/otel/+goclaw-jaeger.yml up -d
 
 # Aspire (two-file pattern)
@@ -48,6 +49,9 @@ docker compose -f use/goclaw/service.goclaw.yml \
                -f use/otel/service.aspire.yml \
                -f use/otel/+goclaw-aspire.yml up -d
 ```
+
+Add `-f zfs/+zfs.yml` to either to enable Jaeger persistence via the
+shared `misc` ZFS dataset.
 
 ## Endpoints
 

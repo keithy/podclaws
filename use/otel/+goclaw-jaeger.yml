@@ -1,5 +1,5 @@
-# Jaeger OTLP overlay — adds Jaeger all-in-one for trace visualization and
-# enables goclaw's OpenTelemetry OTLP exporter.
+# Goclaw-side wiring for the Jaeger OTLP overlay.
+# Requires use/otel/service.jaeger.yml in the stack.
 #
 # Requires GOCLAW_BUILD_TAGS to include 'otel' (set in .env). The build
 # happens via `cd use/goclaw && make build` which reads GOCLAW_BUILD_TAGS
@@ -7,65 +7,10 @@
 #
 # Usage:
 #   docker compose -f use/goclaw/service.goclaw.yml \
-#                  -f use/otel/+goclaw-jaeger.yml \
-#                  -f zfs/+zfs.yml \
-#                  up -d
-#
-# Jaeger UI: http://localhost:16686
-# OTLP gRPC: localhost:4317
-# OTLP HTTP: localhost:4318
-#
-# Persistence: Jaeger's BadgerDB lives under the host's
-# /srv/auto_misc/_data/jaeger/ path, which is a ZFS-backed directory
-# when the misc dataset exists. The path can be overridden via
-# MISC_HOST_PATH. Without +zfs.yml in the stack, the bind mount fails
-# and Jaeger runs ephemeral.
-#
-# On a low-resource host (e.g. Rock64), consider using a lighter backend
-# like Uptrace instead of Jaeger — see docs/architecture.md.
+#                  -f use/otel/service.jaeger.yml \
+#                  -f use/otel/+goclaw-jaeger.yml up -d
 
 services:
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    command:
-      - "--query.max-clock-skew-adjustment=30s"
-      - "--collector.otlp.enabled=true"
-    ports:
-      - "${JAEGER_UI_PORT:-16686}:16686"      # Jaeger UI
-      - "${JAEGER_OTLP_GRPC_PORT:-4317}:4317" # OTLP gRPC
-      - "${JAEGER_OTLP_HTTP_PORT:-4318}:4318" # OTLP HTTP
-    volumes:
-      # Direct bind-mount to a subdir of the host's misc ZFS dataset.
-      # Podman-compose handles host path templating; missing dirs fail
-      # loudly because the bind is `create_host_path: false` in +zfs.yml.
-      - type: bind
-        source: ${MISC_HOST_PATH:-/srv/auto_misc/_data}/jaeger
-        target: /badger
-        bind:
-          create_host_path: false
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
-      - BADGER_EPHEMERAL=false
-      - SPAN_STORAGE_TYPE=badger
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:14269/status"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    networks:
-      - default
-      - goclaw-net
-      
-    # Jaeger's all-in-one is heavy. Cap resources so it doesn't starve
-    # the goclaw container on small hosts.
-    deploy:
-      resources:
-        limits:
-          memory: 384M
-          cpus: '0.5'
-
   goclaw:
     environment:
       - GOCLAW_TELEMETRY_ENABLED=true

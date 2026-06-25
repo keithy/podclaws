@@ -50,9 +50,8 @@ services:
       start_period: 10s
     networks:
       - default
-      - goclaw-net
-    # Jaeger's all-in-one is heavy. Cap resources so it doesn't starve
-    # the goclaw container on small hosts.
+    # Resource cap so jaeger doesn't starve the goclaw container on
+    # small hosts (Rock64 etc).
     deploy:
       resources:
         limits:

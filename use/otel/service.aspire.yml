@@ -24,6 +24,3 @@ services:
       - "18888:18888"   # Dashboard UI + OTLP HTTP
       - "4317:4317"     # OTLP gRPC
     restart: unless-stopped
-    networks:
-      - default
-      - goclaw-net

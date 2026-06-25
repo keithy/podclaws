@@ -11,7 +11,13 @@
 #                  -f use/otel/+goclaw-jaeger.yml up -d
 
 services:
+  jaeger:
+    networks:
+      - goclaw-net
+
   goclaw:
+    networks:
+      - goclaw-net
     environment:
       - GOCLAW_TELEMETRY_ENABLED=true
       - GOCLAW_TELEMETRY_ENDPOINT=jaeger:4317

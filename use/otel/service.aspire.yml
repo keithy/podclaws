@@ -1,0 +1,29 @@
+# Aspire Dashboard service — modern OTLP receiver with traces, logs, and
+# metrics in one view. Lighter than Jaeger (40-80 MB idle).
+#
+# Aspire Dashboard is in-memory only by design; traces, logs, and metrics
+# are lost on container restart. For persistent trace storage, use
+# service.jaeger.yml instead.
+#
+# Usage:
+#   docker compose -f use/goclaw/service.goclaw.yml \
+#                  -f use/otel/service.aspire.yml \
+#                  -f use/otel/+goclaw-aspire.yml up -d
+#
+# Aspire UI: http://localhost:18888
+# OTLP gRPC: localhost:4317
+# OTLP HTTP: localhost:4318 (same as UI port)
+
+services:
+  aspire:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:latest
+    environment:
+      - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
+      - ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL=http://aspire:4317
+    ports:
+      - "18888:18888"   # Dashboard UI + OTLP HTTP
+      - "4317:4317"     # OTLP gRPC
+    restart: unless-stopped
+    networks:
+      - default
+      - goclaw-net

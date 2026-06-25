@@ -1,5 +1,5 @@
-# .NET Aspire Dashboard overlay — modern OTLP receiver with traces, logs,
-# and metrics in one view. Lighter than Jaeger (40-80 MB idle).
+# Goclaw-side wiring for the Aspire Dashboard OTLP overlay.
+# Requires use/otel/service.aspire.yml in the stack.
 #
 # Requires GOCLAW_BUILD_TAGS to include 'otel' (set in .env). The build
 # happens via `cd use/goclaw && make build` which reads GOCLAW_BUILD_TAGS
@@ -7,28 +7,10 @@
 #
 # Usage:
 #   docker compose -f use/goclaw/service.goclaw.yml \
+#                  -f use/otel/service.aspire.yml \
 #                  -f use/otel/+goclaw-aspire.yml up -d
-#
-# Aspire Dashboard: http://localhost:18888
-# OTLP gRPC: localhost:4317
-# OTLP HTTP: localhost:4318
-#
-# Note: Aspire Dashboard is intended for development/debugging. Traces,
-# logs, and metrics are kept in-memory and lost on container restart.
-# For persistent trace storage, use Jaeger instead.
 
 services:
-  aspire:
-    image: mcr.microsoft.com/dotnet/aspire-dashboard:latest
-    environment:
-      - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
-      - ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL=http://aspire:4317
-    ports:
-      - "18888:18888"   # Dashboard UI + OTLP HTTP
-      - "4317:4317"     # OTLP gRPC
-    restart: unless-stopped
-    # Aspire Dashboard is in-memory only by design; no persistent volume.
-
   goclaw:
     environment:
       - GOCLAW_TELEMETRY_ENABLED=true

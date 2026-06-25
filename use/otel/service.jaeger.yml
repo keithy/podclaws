@@ -1,0 +1,37 @@
+# Jaeger service — OTLP all-in-one with persistent BadgerDB storage.
+#
+# Lighter than alternatives: 50-100 MB idle, single container, no
+# external dependencies. Persists spans to disk so traces survive
+# container restarts (when bound to a host volume or ZFS dataset).
+#
+# For traces + logs + metrics in one view (in-memory only), use
+# service.aspire.yml instead.
+#
+# Usage:
+#   docker compose -f use/goclaw/service.goclaw.yml \
+#                  -f use/otel/service.jaeger.yml \
+#                  -f use/otel/+goclaw-jaeger.yml up -d
+#
+# Jaeger UI: http://localhost:16686
+# OTLP gRPC: localhost:4317
+# OTLP HTTP: localhost:4318
+#
+# Persistence: bind-mount /badger to a host directory or ZFS subdir
+# (e.g. /srv/auto_misc/_data/jaeger). Add `-f zfs/+zfs.yml` and the
+# `misc` volume for ZFS-backed persistence.
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - BADGER_EPHEMERAL=false
+      - SPAN_STORAGE_TYPE=badger
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    restart: unless-stopped
+    networks:
+      - default
+      - goclaw-net

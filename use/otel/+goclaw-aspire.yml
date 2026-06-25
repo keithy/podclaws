@@ -11,13 +11,7 @@
 #                  -f use/otel/+goclaw-aspire.yml up -d
 
 services:
-  aspire:
-    networks:
-      - goclaw-net
-
   goclaw:
-    networks:
-      - goclaw-net
     environment:
       - GOCLAW_TELEMETRY_ENABLED=true
       - GOCLAW_TELEMETRY_ENDPOINT=aspire:4317

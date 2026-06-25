@@ -58,7 +58,7 @@ podman compose up -d
 
 | Directory | Purpose |
 |-----------|---------|
-| `podman-compose.yml` | Root: defines `default` and `goclaw-net` networks, the `mise-*` volumes |
+| `compose.yml` | Root: defines the `default` bridge network and the `mise-*` volumes |
 | `use/goclaw/` | `service.goclaw.yml` (main), `service.upgrade.yml` (one-shot migrations), `+code.yml`, `+self-improve.yml`, `+mise-improve.yml` (mutually exclusive with `+self-improve.yml`) |
 | `use/alpine/installers/` | apk-based `add-*` installer scripts (Alpine variant's installer dir) |
 | `use/debian/goclaw/` | Debian variant of the goclaw service: `service.goclaw.yml`, `+self-improve.yml` |

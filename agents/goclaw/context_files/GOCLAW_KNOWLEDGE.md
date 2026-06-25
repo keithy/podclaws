@@ -112,7 +112,7 @@ Versions as of 2026-06-16 (alpine 3.23):
 
 ## podclaws Compose Layout
 
-- Root: `podman-compose.yml` — declares `default` + `goclaw-net` networks. Named volumes `mise-musl` and `mise-cache` are declared in the `+mise-improve.yml` overlay (only when using mise).
+- Root: `compose.yml` — declares the `default` bridge network. Named volumes `mise-musl` and `mise-cache` are declared in the `+mise-improve.yml` overlay (only when using mise).
 - Services/overlays live under `use/<agent>/` and other top-level dirs.
 - Filename convention: `foo.yml` (service), `+foo.yml` (overlay), `foo.bar.yml` (root).
 - `podman/compose-services-select.sh` (wrapped by `mise run services:select`) manages the `COMPOSE_FILE` variable in `.env` based on selections in `.env-compose`.

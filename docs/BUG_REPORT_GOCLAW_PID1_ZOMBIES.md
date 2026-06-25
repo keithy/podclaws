@@ -56,7 +56,7 @@ Either is preferable to the workaround of running goclaw with `init: true` in co
 ## Environment
 
 - goclaw: `v3.14.0` (commit `2f3d68e8`)
-- Runtime: rootless podman with `goclaw-net` network
+- Runtime: rootless podman with bridge networking (default network)
 - Container: Alpine 3.23, goclaw binary directly (no entrypoint wrapper)
 - cgroup v2, `pids.max = 200`
 

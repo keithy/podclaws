@@ -25,7 +25,6 @@ services:
       retries: 3
     networks:
       - default
-      - goclaw-net
 
   goclaw:
     environment:

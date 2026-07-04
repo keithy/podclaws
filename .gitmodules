@@ -7,3 +7,6 @@
 [submodule "goclaw"]
 	path = goclaw
 	url = https://github.com/keithy/goclaw.git
+[submodule "nickel-compose"]
+	path = nickel-compose
+	url = https://github.com/keithy/nickel-compose.git

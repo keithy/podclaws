@@ -93,3 +93,10 @@ goclaw-export-*.tar.gz
 # AI memory
 .crush/
 .crush
+
+# Per-developer config.ncl (config/example.ncl is the committed template).
+# compose.yaml is the rendered output (rendered by nickel-compose);
+# compose.yml stays as the tracked root fragment.
+/config/*
+!/config/*example*
+/compose.yaml

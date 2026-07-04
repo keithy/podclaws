@@ -33,7 +33,7 @@ goclaw / picoclaw        →      sensible-server → execlineb scripts
 - **`goclaw/`, `picoclaw/`** — submodules of the upstream sources (synced via `use/*/Makefile` targets).
 - **`sensible/`** — host execution bridge (Go + `execlineb`).
 - **`podman/`** — rootless Podman configuration, compose-file selector, network/user overlays.
-- **`compose.yml`** — root compose: declares the `default` bridge network and the `mise-musl`, `mise-glibc`, `mise-cache` volumes.
+- **`compose.yml`** — root compose: declares the `default` bridge network and the `mise-musl`, `mise-glibc`, `mise-cache` volumes. This is a fragment (input), not the rendered output.
 - **`RELEASES/`** — built binaries, gitignored, versioned by tag.
 
 For a deeper architecture description (hybrid mise shims, ZFS-backed volumes, sensible whitelist) see [`docs/architecture.md`](docs/architecture.md). For Podman-specific setup see [`docs/podman.md`](docs/podman.md).

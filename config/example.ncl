@@ -20,7 +20,7 @@
 # overlays shouldn't dirty the repo for everyone else. config/example.ncl
 # is the committed template; config/config.ncl is your local copy.
 
-let nc = import "../../nickel-compose/lib/nickel-compose.ncl" in
+let composer = import "../../nickel-compose/nickel-compose.ncl" in
 
 let fragments = [
   # === ROOT (required) ===
@@ -63,4 +63,4 @@ let fragments = [
   # import "../use/goclaw/~reset-build.yml",
 ] in
 
-nc.merge fragments
+composer.merge fragments

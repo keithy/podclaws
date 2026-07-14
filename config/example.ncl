@@ -8,7 +8,8 @@
 #   1. Copy this file to config/config.ncl:
 #        cp config/example.ncl config/config.ncl
 #   2. Edit the `fragments` list below to pick which services
-#      and overlays you want enabled.
+#      and overlays you want enabled. Comment out an import to
+#      disable it (just like the `#` lines in .env-compose).
 #   3. Render:
 #        nickel export --format yaml config/config.ncl > compose.yaml
 #   4. Validate:
@@ -22,13 +23,44 @@
 let build = import "../../nickel-compose/lib/merge.ncl" in
 
 let fragments = [
-  # goclaw service — the main agent runtime
-  import "../use/goclaw/service.goclaw.yml",
+  # === ROOT (required) ===
+  import "../compose.yml",
 
-  # Overlays — comment out what you don't want
-  import "../use/goclaw/+code.yml",
-  import "../use/goclaw/+self-improve.yml",
+  # === SERVICE (optional) ===
+  import "../goclaw/docker-compose.postgres.yml",
+  import "../goclaw/docker-compose.selfservice.yml",
+  # import "../goclaw/docker-compose.upgrade.yml",
+  import "../use/goclaw/service.goclaw.yml",
+  import "../use/goclaw/service.upgrade.yml",
+  # import "../goclaw/docker-compose.browser.yml",
+  # import "../goclaw/docker-compose.claude-cli.yml",
+  # import "../goclaw/docker-compose.otel.yml",
+  # import "../goclaw/docker-compose.redis.yml",
+  # import "../goclaw/docker-compose.sandbox.yml",
+  # import "../goclaw/docker-compose.tailscale.yml",
+  # import "../picoclaw/docker/docker-compose.yml",
+  # import "../picoclaw/docker/docker-compose.full.yml",
+  # import "../use/debian/goclaw/service.goclaw.yml",
+  # import "../use/debian/goclaw/service.sandbox.yml",
+  # import "../use/goclaw/service.redis.yml",
+  # import "../use/goclaw/service.sandbox.yml",
+  # import "../use/otel/service.aspire.yml",
+  # import "../use/otel/service.jaeger.yml",
+
+  # === OVERLAY (optional) ===
   import "../podman/+network-fix.yml",
+  import "../podman/+user-fix.yml",
+  import "../use/goclaw/+self-improve.yml",
+  # import "../use/debian/goclaw/+self-improve.yml",
+  # import "../use/goclaw/+code.yml",
+  # import "../use/goclaw/+mise-improve.yml",
+  # import "../use/otel/+goclaw-aspire.yml",
+  # import "../use/otel/+goclaw-jaeger.yml",
+  # import "../use/postgres/+low-cpu.yml",
+  # import "../zfs/+zfs.yml",
+
+  # === POST-OVERLAY (final, applied last) ===
+  # import "../use/goclaw/~reset-build.yml",
 ] in
 
 build fragments

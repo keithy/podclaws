@@ -1,0 +1,84 @@
+---
+networks:
+  default:
+    driver: bridge
+services:
+  goclaw:
+    build:
+      context: ${GOCLAW_DIR}/../use/goclaw
+    cap_add:
+    - SETUID
+    - SETGID
+    - CHOWN
+    cap_drop:
+    - ALL
+    command:
+    - /bin/goclaw
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+          pids: 200
+    env_file:
+    - path: .env
+      required: false
+    environment:
+    - HOME=/app
+    - GOCLAW_DATA_DIR=/app/data
+    - GOCLAW_CONFIG=/app/data/config.json
+    - GOCLAW_WORKSPACE=/app/workspace
+    - GOCLAW_GATEWAY_TOKEN=${GOCLAW_GATEWAY_TOKEN:?run ./prepare-env.sh or set GOCLAW_GATEWAY_TOKEN}
+    - GOCLAW_ENCRYPTION_KEY=${GOCLAW_ENCRYPTION_KEY:-}
+    - GOCLAW_TRACE_VERBOSE=${GOCLAW_TRACE_VERBOSE:-0}
+    - GOCLAW_HOST=${GOCLAW_HOST:-0.0.0.0}
+    - GOCLAW_PORT=${GOCLAW_PORT:-18790}
+    - PIP_BREAK_SYSTEM_PACKAGES=1
+    - PATH=/app/.local/bin:/app/data/.runtime/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/sbin
+    - HOST_TASKS_DIR=/app/data/.runtime/sensible/tasks
+    - MISE_STAGE_DIR=/usr/bin
+    - MISE_VERSION=2026.6.13
+    extra_hosts:
+    - host.docker.internal:host-gateway
+    healthcheck:
+      interval: 30s
+      retries: 3
+      start_period: 10s
+      test:
+      - CMD
+      - wget
+      - -qO-
+      - http://localhost:${GOCLAW_PORT:-18790}/health
+      timeout: 5s
+    image: localhost/goclaw:current
+    init: false
+    networks:
+    - default
+    ports:
+    - ${GOCLAW_PORT:-18790}:18790
+    restart: unless-stopped
+    tmpfs:
+    - /tmp:rw,noexec,nosuid,size=256m
+    volumes:
+    - ${PODCLAWS_RELEASES:-./RELEASES}/goclaw/${GOCLAW_DEPLOY_VERSION}/goclaw:/bin/goclaw:ro
+    - ${PODCLAWS_RELEASES:-./RELEASES}/goclaw/${GOCLAW_DEPLOY_VERSION}/pkg-helper:/bin/pkg-helper:ro
+    - ${GOCLAW_DIR}/skills:/app/bundled-skills:ro
+    - ${PODCLAWS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}:/etc/ssl/certs/ca-certificates.crt:ro
+    - goclaw-data:/app/data
+    - goclaw-workspace:/app/workspace
+    - /code:/code
+    - ./use/self-improve/shared-sbin:/usr/local/sbin:ro
+    - ./use/alpine/installers:/usr/local/bin:ro
+    - ./use/self-improve/skills/self-improve:/app/bundled-skills/self-improve:ro
+  goclaw-ui:
+    environment:
+      NGINX_ENTRYPOINT_LOCAL_RESOLVERS: 1
+    init: false
+    networks:
+    - default
+    restart: unless-stopped
+    volumes:
+    - ./podman/config/nginx.default.conf:/etc/nginx/conf.d/default.conf:ro
+volumes:
+  goclaw-data: null
+  goclaw-workspace: null

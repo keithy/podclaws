@@ -63,4 +63,4 @@ let fragments = [
   # import "../use/goclaw/~reset-build.yml",
 ] in
 
-composer.merge fragments
+composer.merge_with_source fragments "config/example.ncl"
